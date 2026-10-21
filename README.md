@@ -404,7 +404,7 @@ On iOS 26 and later, ToastKit uses Apple's system Liquid Glass effect. Earlier s
 
 ## Dynamic Presentation
 
-Dynamic presentation flows from the top camera area with a short liquid-drop connector, starts as a compact foreground pill, and smoothly expands to reveal the toast content. It retracts toward the top when dismissed. The effect has a native SwiftUI design on iOS and a Material-style Compose design on Android:
+Dynamic presentation briefly flows from the top camera area with a liquid-drop connector, starts as a compact foreground pill, and smoothly expands to reveal the toast content. The connector retracts once expansion finishes instead of remaining above the toast. The effect has a native SwiftUI design on iOS and a Material-style Compose design on Android:
 
 ```php
 Toast::info('Syncing contacts...')

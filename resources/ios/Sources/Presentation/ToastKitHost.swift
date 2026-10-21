@@ -90,7 +90,7 @@ private struct ToastKitDynamicPillModifier: ViewModifier {
     let amount: CGFloat
 
     func body(content: Content) -> some View {
-        content.scaleEffect(x: amount, y: 1).clipped()
+        content.scaleEffect(x: amount, y: 1)
     }
 }
 
@@ -144,6 +144,8 @@ private struct ToastKitView: View {
             withAnimation(dynamicAnimation) { dynamicDropExtended = true }
             if !reduceMotion { try? await Task.sleep(for: .milliseconds(70)) }
             withAnimation(dynamicAnimation) { dynamicExpanded = true }
+            if !reduceMotion { try? await Task.sleep(for: .milliseconds(180)) }
+            withAnimation(dynamicAnimation) { dynamicDropExtended = false }
         }
     }
 

@@ -228,9 +228,16 @@ private fun DynamicToastKitCard(
     var dropExtended by remember(toast.id) { mutableStateOf(false) }
     LaunchedEffect(visible) {
         if (visible) {
+            if (reduceMotion) {
+                dropExtended = false
+                expanded = true
+                return@LaunchedEffect
+            }
             dropExtended = true
-            if (!reduceMotion) delay(70)
+            delay(70)
             expanded = true
+            delay(180)
+            dropExtended = false
         } else {
             expanded = false
             if (!reduceMotion) delay(45)
