@@ -59,6 +59,7 @@ struct ToastKitConfiguration: Identifiable {
     var swipeToDismiss: Bool
     var dismissible: Bool
     var action: ToastKitActionConfiguration?
+    var data: [String: Any]
     var style: ToastKitStyleConfiguration
     var strategy: ToastKitStrategy
     var maxVisible: Int

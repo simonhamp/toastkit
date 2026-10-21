@@ -107,6 +107,20 @@ export class PendingToastBase {
       label: nonEmpty(label, "action label"),
     });
   }
+  data(value) {
+    if (value === null || typeof value !== "object" || Array.isArray(value))
+      throw new TypeError("toast data must be an object");
+    try {
+      const encoded = JSON.stringify(value, (_key, item) => {
+        if (["bigint", "function", "symbol"].includes(typeof item))
+          throw new TypeError("unsupported toast data value");
+        return item;
+      });
+      return this.set("data", JSON.parse(encoded));
+    } catch {
+      throw new TypeError("toast data must be serializable");
+    }
+  }
   typography(group, options) {
     const values = {};
     if (options.font !== undefined)

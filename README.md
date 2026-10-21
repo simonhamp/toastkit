@@ -59,7 +59,7 @@ ToastKit renders toasts as native overlays — Jetpack Compose on Android, Swift
 - **Polished updates** — title and message changes crossfade in place instead of snapping.
 - **Unique toasts** — suppress duplicate work by a stable semantic key across visible, queued, stacked, and persistent toasts.
 - **Idempotent dismissal** — dismiss by ID or dismiss everything.
-- **Events** — `ToastShown`, `ToastDismissed`, and `ToastActionPressed`.
+- **Events** — `ToastShown`, `ToastDismissed`, `ToastPressed`, and `ToastActionPressed`.
 - **JavaScript API** — a fluent `Toast` API for web-facing apps.
 
 ## Installation
@@ -670,13 +670,41 @@ Dismissals are idempotent — dismissing an ID that is already gone is a no-op.
 
 ## Actions & Events
 
-Add a native action button and handle its press:
+Attach small routing or context values with `data()`, then handle a press anywhere on the toast body:
+
+```php
+use Native\Mobile\Attributes\On;
+use Victorycodedev\ToastKit\Events\ToastPressed;
+
+Toast::info('New message from Grace')
+    ->data([
+        'conversation_id' => 42,
+        'message_id' => 781,
+    ])
+    ->dynamic()
+    ->show();
+
+#[On(ToastPressed::class)]
+public function openConversation(string $toastId, array $data): void
+{
+    Toast::dismiss($toastId);
+
+    $this->redirectRoute('conversations.show', [
+        'conversation' => $data['conversation_id'],
+    ]);
+}
+```
+
+Whole-toast pressing is enabled only when non-empty `data()` is attached. Toasts without attached data keep their existing interaction behavior and do not emit `ToastPressed`; calling `data([])` disables whole-toast pressing again. A body press does not automatically dismiss the toast, so the listener decides whether to dismiss, update, or retain it. Action and close controls consume their own presses and do not also emit `ToastPressed`.
+
+Add a native action button and handle its press independently:
 
 ```php
 use Native\Mobile\Attributes\On;
 use Victorycodedev\ToastKit\Events\ToastActionPressed;
 
 Toast::error('Connection lost')
+    ->data(['request_id' => 91])
     ->action(
         label: 'Retry',
         id: 'retry',
@@ -687,6 +715,7 @@ Toast::error('Connection lost')
 public function handleToastAction(
     string $toastId,
     string $actionId,
+    array $data,
 ): void {
     if ($actionId === 'retry') {
         $this->retry();
@@ -694,7 +723,7 @@ public function handleToastAction(
 }
 ```
 
-Pressing an action emits `ToastActionPressed` and dismisses the toast.
+Pressing an action emits `ToastActionPressed` with the attached data and dismisses the toast. Keep attached data small and JSON-serializable—IDs, types, and slugs are preferable to complete models or sensitive values. Calling `data()` during an update replaces the attached object; `data([])` clears it.
 
 The other events follow the same pattern:
 
@@ -950,13 +979,14 @@ Refer to your Fetch package's documentation for its exact API surface.
 
 ## Events
 
-ToastKit dispatches three events. Listen with NativePHP's `#[On]` attribute:
+ToastKit dispatches four events. Listen with NativePHP's `#[On]` attribute:
 
 | Event | Payload |
 | --- | --- |
 | `Victorycodedev\ToastKit\Events\ToastShown` | `toastId` (string) |
 | `Victorycodedev\ToastKit\Events\ToastDismissed` | `toastId` (string), `reason` (string) |
-| `Victorycodedev\ToastKit\Events\ToastActionPressed` | `toastId` (string), `actionId` (string) |
+| `Victorycodedev\ToastKit\Events\ToastPressed` | `toastId` (string), `data` (array) |
+| `Victorycodedev\ToastKit\Events\ToastActionPressed` | `toastId` (string), `actionId` (string), `data` (array) |
 
 ```php
 use Native\Mobile\Attributes\On;
@@ -1070,6 +1100,7 @@ Native::test(ProfileScreen::class)
 | `swipeToDismiss(bool $enabled = true)` | Enable or disable swipe-to-dismiss. |
 | `dismissible(bool $enabled = true)` | Show a visible close control. |
 | `action(string $label, string $id)` | Add an action button with a label and ID. |
+| `data(array $data)` | Attach JSON-serializable context delivered with body-press and action events. |
 | `background(string $color)` | Set the background color. |
 | `foreground(string $color)` | Set the text color. |
 | `iconColor(string $color)` | Set the icon color. |
@@ -1117,6 +1148,7 @@ Native::test(ProfileScreen::class)
 | `icon_size` | Platform default (omitted) |
 | `swipe_to_dismiss` | `true` |
 | `dismissible` | `false` |
+| `data` | Empty and omitted unless configured |
 | `strategy` | `queue` |
 | `max_visible` | `3` |
 | `corner_radius` | `16` |

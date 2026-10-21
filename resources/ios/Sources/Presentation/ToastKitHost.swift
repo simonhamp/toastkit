@@ -124,12 +124,19 @@ private struct ToastKitView: View {
         .opacity(Double(max(CGFloat(0.35), CGFloat(1) - (abs(drag.width) + abs(drag.height)) / CGFloat(700))))
         .toastKitConfiguredOpacity(toast.opacity)
         .contentShape(Rectangle())
+        .toastKitConditional(!toast.data.isEmpty) {
+            $0.onTapGesture { ToastKitManager.shared.press(toast.id) }
+                .accessibilityAction(named: Text("Open notification")) {
+                    ToastKitManager.shared.press(toast.id)
+                }
+        }
         .background {
             GeometryReader { proxy in
                 Color.clear.preference(
                     key: ToastKitFramePreferenceKey.self,
                     value: [toast.id: proxy.frame(in: .global)]
                 )
+                .allowsHitTesting(false)
             }
         }
         .toastKitConditional(toast.swipeToDismiss) { $0.gesture(dragGesture) }

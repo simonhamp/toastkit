@@ -74,7 +74,8 @@
     "events": [
         "Victorycodedev\\ToastKit\\Events\\ToastShown",
         "Victorycodedev\\ToastKit\\Events\\ToastDismissed",
-        "Victorycodedev\\ToastKit\\Events\\ToastActionPressed"
+        "Victorycodedev\\ToastKit\\Events\\ToastActionPressed",
+        "Victorycodedev\\ToastKit\\Events\\ToastPressed"
     ],
     "service_provider": "Victorycodedev\\ToastKit\\ToastKitServiceProvider"
 }

@@ -9,5 +9,9 @@ class ToastActionPressed
 {
     use Dispatchable, SerializesModels;
 
-    public function __construct(public string $toastId, public string $actionId) {}
+    public function __construct(
+        public string $toastId,
+        public string $actionId,
+        public array $data = [],
+    ) {}
 }

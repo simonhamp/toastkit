@@ -58,6 +58,7 @@ enum ToastKitBridgeNormalizer {
         if let value = changes["swipe_to_dismiss"] { next.swipeToDismiss = try boolean(value, "swipe_to_dismiss") }
         if let value = changes["dismissible"] { next.dismissible = try boolean(value, "dismissible") }
         if changes.keys.contains("action") { next.action = try changes["action"].map(action) }
+        if changes.keys.contains("data") { next.data = try data(changes["data"] ?? [String: Any]()) }
         if let value = changes["strategy"] { next.strategy = try enumValue(value, "strategy") }
         if let value = changes["max_visible"] { next.maxVisible = try positiveInt(value, "max_visible") }
         if let value = changes["style"] { next.style = try style(value, fallback: next.style) }
@@ -95,6 +96,7 @@ enum ToastKitBridgeNormalizer {
             swipeToDismiss: try values["swipe_to_dismiss"].map { try boolean($0, "swipe_to_dismiss") } ?? true,
             dismissible: try values["dismissible"].map { try boolean($0, "dismissible") } ?? false,
             action: try values["action"].map(action),
+            data: try values["data"].map(data) ?? [:],
             style: try style(values["style"] ?? [String: Any](), fallback: variantStyle(variantName)),
             strategy: try enumValue(values["strategy"] ?? "queue", "strategy"),
             maxVisible: try positiveInt(values["max_visible"] ?? 3, "max_visible"),
@@ -114,6 +116,20 @@ enum ToastKitBridgeNormalizer {
     private static func action(_ value: Any) throws -> ToastKitActionConfiguration {
         guard let map = value as? [String: Any] else { throw ToastKitInputError.invalid("action must be an object") }
         return ToastKitActionConfiguration(id: try requiredString(map, "id"), label: try requiredString(map, "label"))
+    }
+
+    private static func data(_ value: Any) throws -> [String: Any] {
+        if let data = value as? [String: Any] {
+            return data
+        }
+
+        // PHP encodes an empty associative array as JSON `[]`. Treat that
+        // representation as an empty data object so data remains optional.
+        if let data = value as? [Any], data.isEmpty {
+            return [:]
+        }
+
+        throw ToastKitInputError.invalid("data must be an object")
     }
 
     private static func nativeMode(_ value: Any) throws -> (ios: Bool, android: Bool) {

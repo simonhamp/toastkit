@@ -171,6 +171,17 @@ trait ConfiguresToast
         return $this->put('action', ['id' => $id, 'label' => $label]);
     }
 
+    public function data(array $data): static
+    {
+        try {
+            json_encode($data, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            throw new InvalidToastConfigurationException('Toast data must be JSON serializable.');
+        }
+
+        return $this->put('data', $data);
+    }
+
     public function background(string $color): static
     {
         return $this->putStyle('background', $this->color($color));

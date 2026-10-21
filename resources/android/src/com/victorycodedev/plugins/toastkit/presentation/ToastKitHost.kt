@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -137,6 +138,11 @@ private fun ToastKitCard(toast: ToastKitConfiguration) {
         val interaction = Modifier.padding(vertical = 4.dp).widthIn(max = 560.dp)
                 .then(if (toast.presentation == ToastKitPresentation.STANDARD) Modifier.fillMaxWidth() else Modifier)
                 .semantics { liveRegion = LiveRegionMode.Polite }
+                .then(
+                    if (toast.data.isNotEmpty()) Modifier.clickable(onClickLabel = "Open notification") {
+                        ToastKitManager.press(toast.id)
+                    } else Modifier,
+                )
                 .graphicsLayer { translationX = displayedX; translationY = displayedY; alpha = (1f - (abs(displayedX) + abs(displayedY)) / 700f).coerceIn(.35f, 1f) }
                 .then(toast.opacity?.let { Modifier.alpha(it) } ?: Modifier)
                 .then(gesture)

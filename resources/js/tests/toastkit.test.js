@@ -173,6 +173,23 @@ test("swipe, dismissible and action are set", () => {
   assert.deepEqual(payload.action, { id: "retry", label: "Retry" });
 });
 
+test("attached data is copied and remains sparse in updates", () => {
+  const data = { conversation_id: 42, message: { id: 781 } };
+  const pending = Toast.info("New message").data(data);
+  data.message.id = 999;
+
+  assert.equal("data" in Toast.info("Existing toast").payload(), false);
+  assert.deepEqual(pending.payload().data, {
+    conversation_id: 42,
+    message: { id: 781 },
+  });
+  assert.deepEqual(Toast.update("one").data({ message_id: 781 }).payload().changes, {
+    data: { message_id: 781 },
+  });
+  assert.throws(() => Toast.make("x").data([]), /data must be an object/);
+  assert.throws(() => Toast.make("x").data({ value: 1n }), /serializable/);
+});
+
 test("custom styling is normalized", () => {
   const payload = Toast.make("x")
     .background("#abc")

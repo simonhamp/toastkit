@@ -2,6 +2,7 @@ package com.victorycodedev.plugins.toastkit.bridge
 
 import androidx.compose.ui.graphics.Color
 import com.victorycodedev.plugins.toastkit.model.*
+import org.json.JSONArray
 import org.json.JSONObject
 
 internal class ToastKitInputException(message: String) : IllegalArgumentException(message)
@@ -54,6 +55,7 @@ internal object ToastKitBridgeNormalizer {
         changes["swipe_to_dismiss"]?.let { next = next.copy(swipeToDismiss = boolean(it, "swipe_to_dismiss")) }
         changes["dismissible"]?.let { next = next.copy(dismissible = boolean(it, "dismissible")) }
         if (changes.containsKey("action")) next = next.copy(action = optionalValue(changes["action"])?.let(::action))
+        if (changes.containsKey("data")) next = next.copy(data = data(changes["data"] ?: emptyMap<String, Any>()))
         changes["strategy"]?.let { next = next.copy(strategy = strategy(it)) }
         changes["max_visible"]?.let { next = next.copy(maxVisible = positiveInt(it, "max_visible")) }
         changes["style"]?.let { next = next.copy(style = style(it, next.style)) }
@@ -93,6 +95,7 @@ internal object ToastKitBridgeNormalizer {
             swipeToDismiss = values["swipe_to_dismiss"]?.let { boolean(it, "swipe_to_dismiss") } ?: true,
             dismissible = values["dismissible"]?.let { boolean(it, "dismissible") } ?: false,
             action = optionalValue(values["action"])?.let(::action),
+            data = values["data"]?.let(::data) ?: emptyMap(),
             style = style(values["style"] ?: emptyMap<String, Any>(), variantStyle(values["variant"] as? String ?: "neutral")),
             strategy = strategy(values["strategy"] ?: "queue"),
             maxVisible = positiveInt(values["max_visible"] ?: 3, "max_visible"),
@@ -116,6 +119,17 @@ internal object ToastKitBridgeNormalizer {
     private fun action(value: Any): ToastKitAction {
         val map = stringMap(value) ?: throw ToastKitInputException("action must be an object")
         return ToastKitAction(requiredString(map, "id"), requiredString(map, "label"))
+    }
+
+    private fun data(value: Any): Map<String, Any> {
+        stringMap(value)?.let { return it }
+
+        // PHP encodes an empty associative array as JSON `[]`. Treat that
+        // representation as an empty data object so data remains optional.
+        if (value is JSONArray && value.length() == 0) return emptyMap()
+        if (value is Collection<*> && value.isEmpty()) return emptyMap()
+
+        throw ToastKitInputException("data must be an object")
     }
 
     private fun nativeMode(value: Any): Pair<Boolean, Boolean> {

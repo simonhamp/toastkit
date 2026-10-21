@@ -72,8 +72,14 @@ internal object ToastKitManager {
     fun action(id: String, actionId: String) = onMain {
         val state = states[id] ?: return@onMain
         if (state.terminated) return@onMain
-        ToastKitEventDispatcher.action(id, actionId)
+        ToastKitEventDispatcher.action(id, actionId, state.configuration.data)
         terminate(id, "action")
+    }
+
+    fun press(id: String) = onMain {
+        val state = states[id] ?: return@onMain
+        if (state.terminated || state.configuration.data.isEmpty()) return@onMain
+        ToastKitEventDispatcher.pressed(id, state.configuration.data)
     }
 
     private fun canAdmit(configuration: ToastKitConfiguration): Boolean {

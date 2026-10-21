@@ -52,6 +52,7 @@ internal data class ToastKitConfiguration(
     val swipeToDismiss: Boolean,
     val dismissible: Boolean,
     val action: ToastKitAction?,
+    val data: Map<String, Any>,
     val style: ToastKitStyle,
     val strategy: ToastKitStrategy,
     val maxVisible: Int,
