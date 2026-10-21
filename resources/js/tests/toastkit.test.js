@@ -72,6 +72,14 @@ test("icon supports logical names and platform overrides", () => {
   );
 });
 
+test("icon size accepts only predefined sizes", () => {
+  assert.equal(Toast.make("x").iconSize("lg").payload().icon_size, "lg");
+  assert.deepEqual(Toast.update("one").iconSize("sm").payload().changes, {
+    icon_size: "sm",
+  });
+  assert.throws(() => Toast.make("x").iconSize("xl"), /icon size/);
+});
+
 test("position, duration, persistent and animation are set", () => {
   const payload = Toast.make("x")
     .position("top")
@@ -83,6 +91,16 @@ test("position, duration, persistent and animation are set", () => {
   assert.equal(payload.animation, "slide");
   assert.equal(Toast.make("x").persistent().payload().persistent, true);
   assert.equal(Toast.make("x").persistent().payload().duration, null);
+});
+
+test("presentation defaults to standard and supports dynamic updates", () => {
+  assert.equal(Toast.make("x").payload().presentation, "standard");
+  assert.equal(Toast.make("x").presentation("dynamic").payload().presentation, "dynamic");
+  assert.equal(Toast.make("x").dynamic().payload().presentation, "dynamic");
+  assert.deepEqual(Toast.update("one").dynamic().payload().changes, {
+    presentation: "dynamic",
+  });
+  assert.throws(() => Toast.make("x").presentation("floating"), /presentation/);
 });
 
 test("native appearance is custom by default and selectable per platform", () => {
@@ -153,6 +171,51 @@ test("swipe, dismissible and action are set", () => {
   assert.equal(payload.swipe_to_dismiss, false);
   assert.equal(payload.dismissible, true);
   assert.deepEqual(payload.action, { id: "retry", label: "Retry" });
+});
+
+test("actions accepts at most two labeled actions and the last API wins", () => {
+  const actions = [
+    { label: "Cancel", id: "cancel" },
+    { label: "Delete", id: "delete", color: "#ef4444" },
+  ];
+  assert.deepEqual(Toast.make("x").actions(actions).payload().actions, [
+    { id: "cancel", label: "Cancel" },
+    { id: "delete", label: "Delete", color: "#EF4444" },
+  ]);
+
+  const single = Toast.make("x").actions(actions).action("Undo", "undo").payload();
+  assert.deepEqual(single.action, { id: "undo", label: "Undo" });
+  assert.equal("actions" in single, false);
+
+  const multiple = Toast.make("x").action("Undo", "undo").actions(actions).payload();
+  assert.equal("action" in multiple, false);
+  assert.deepEqual(multiple.actions, [
+    { id: "cancel", label: "Cancel" },
+    { id: "delete", label: "Delete", color: "#EF4444" },
+  ]);
+
+  assert.throws(() => Toast.make("x").actions([]), /one or two/);
+  assert.throws(() => Toast.make("x").actions([...actions, { label: "Save", id: "save" }]), /one or two/);
+  assert.throws(() => Toast.make("x").actions([{ label: "Missing ID" }]), /action ID/);
+  assert.throws(() => Toast.make("x").actions([{ label: "One", id: "same" }, { label: "Two", id: "same" }]), /unique/);
+  assert.throws(() => Toast.make("x").actions([{ label: "One", id: "one", color: "red" }]), /hexadecimal/);
+});
+
+test("attached data is copied and remains sparse in updates", () => {
+  const data = { conversation_id: 42, message: { id: 781 } };
+  const pending = Toast.info("New message").data(data);
+  data.message.id = 999;
+
+  assert.equal("data" in Toast.info("Existing toast").payload(), false);
+  assert.deepEqual(pending.payload().data, {
+    conversation_id: 42,
+    message: { id: 781 },
+  });
+  assert.deepEqual(Toast.update("one").data({ message_id: 781 }).payload().changes, {
+    data: { message_id: 781 },
+  });
+  assert.throws(() => Toast.make("x").data([]), /data must be an object/);
+  assert.throws(() => Toast.make("x").data({ value: 1n }), /serializable/);
 });
 
 test("custom styling is normalized", () => {

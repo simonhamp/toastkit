@@ -37,12 +37,32 @@ it('updates icon and style independently', function () {
     ]);
 });
 
+it('updates icon size sparsely', function () {
+    $this->kit->update('upload')->iconSize('lg')->show();
+
+    expect($this->calls[0][1]['changes'])->toBe(['icon_size' => 'lg']);
+});
+
 it('updates title and action together', function () {
     $this->kit->update('upload')->title('Done')->action('Retry', 'retry')->show();
 
     expect($this->calls[0][1]['changes'])->toBe([
         'title' => 'Done',
         'action' => ['id' => 'retry', 'label' => 'Retry'],
+    ]);
+});
+
+it('updates multiple actions sparsely', function () {
+    $this->kit->update('upload')->actions([
+        ['label' => 'Pause', 'id' => 'pause'],
+        ['label' => 'Cancel', 'id' => 'cancel'],
+    ])->show();
+
+    expect($this->calls[0][1]['changes'])->toBe([
+        'actions' => [
+            ['id' => 'pause', 'label' => 'Pause'],
+            ['id' => 'cancel', 'label' => 'Cancel'],
+        ],
     ]);
 });
 

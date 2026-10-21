@@ -1,12 +1,14 @@
 export const allowed = {
   variant: ["neutral", "success", "error", "warning", "info"],
   position: ["top", "center", "bottom"],
+  presentation: ["standard", "dynamic"],
   animation: ["fade", "slide", "scale", "spring", "snap", "pop", "reveal", "bounce"],
   direction: ["auto", "left", "right", "top", "bottom"],
   strategy: ["queue", "stack"],
   size: ["xs", "sm", "base", "lg", "xl"],
   weight: ["normal", "medium", "semibold", "bold"],
   align: ["left", "center", "right"],
+  "icon size": ["sm", "md", "lg"],
 };
 export function nonEmpty(value, name) {
   if (typeof value !== "string" || value.trim() === "")

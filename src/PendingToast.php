@@ -63,6 +63,12 @@ class PendingToast
         return $this;
     }
 
+    protected function forget(string $key): static
+    {
+        unset($this->options[$key]);
+        return $this;
+    }
+
     protected function putStyle(string $key, mixed $value): static
     {
         $this->options['style'][$key] = $value;
@@ -81,6 +87,7 @@ class PendingToast
             'title' => null,
             'variant' => 'neutral',
             'position' => 'bottom',
+            'presentation' => 'standard',
             'native' => ['ios' => false, 'android' => false],
             'duration' => 3000,
             'persistent' => false,

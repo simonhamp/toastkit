@@ -2,6 +2,7 @@ package com.victorycodedev.plugins.toastkit.bridge
 
 import androidx.compose.ui.graphics.Color
 import com.victorycodedev.plugins.toastkit.model.*
+import org.json.JSONArray
 import org.json.JSONObject
 
 internal class ToastKitInputException(message: String) : IllegalArgumentException(message)
@@ -39,7 +40,9 @@ internal object ToastKitBridgeNormalizer {
             next = next.copy(variant = name, style = variantStyle(name), icon = defaultIcon(name))
         }
         if (changes.containsKey("icon")) next = next.copy(icon = optionalValue(changes["icon"])?.let(::icon))
+        changes["icon_size"]?.let { next = next.copy(iconSize = iconSize(it)) }
         changes["position"]?.let { next = next.copy(position = position(it)) }
+        changes["presentation"]?.let { next = next.copy(presentation = presentation(it)) }
         changes["animation"]?.let { next = next.copy(animation = animation(it)) }
         changes["direction"]?.let { next = next.copy(direction = direction(it)) }
         changes["native"]?.let {
@@ -51,7 +54,9 @@ internal object ToastKitBridgeNormalizer {
         changes["loading"]?.let { next = next.copy(loading = boolean(it, "loading")) }
         changes["swipe_to_dismiss"]?.let { next = next.copy(swipeToDismiss = boolean(it, "swipe_to_dismiss")) }
         changes["dismissible"]?.let { next = next.copy(dismissible = boolean(it, "dismissible")) }
-        if (changes.containsKey("action")) next = next.copy(action = optionalValue(changes["action"])?.let(::action))
+        if (changes.containsKey("action")) next = next.copy(actions = optionalValue(changes["action"])?.let(::action)?.let(::listOf) ?: emptyList())
+        if (changes.containsKey("actions")) next = next.copy(actions = actions(changes["actions"] ?: emptyList<Any>()))
+        if (changes.containsKey("data")) next = next.copy(data = data(changes["data"] ?: emptyMap<String, Any>()))
         changes["strategy"]?.let { next = next.copy(strategy = strategy(it)) }
         changes["max_visible"]?.let { next = next.copy(maxVisible = positiveInt(it, "max_visible")) }
         changes["style"]?.let { next = next.copy(style = style(it, next.style)) }
@@ -80,7 +85,9 @@ internal object ToastKitBridgeNormalizer {
             title = nullableString(values["title"], "title"),
             variant = variant(values["variant"] ?: "neutral"),
             icon = optionalValue(values["icon"])?.let(::icon),
+            iconSize = values["icon_size"]?.let(::iconSize),
             position = position(values["position"] ?: "bottom"),
+            presentation = presentation(values["presentation"] ?: "standard"),
             durationMs = if (persistent) null else positiveLong(values["duration"] ?: 3000, "duration"),
             animation = animation(values["animation"] ?: "scale"),
             direction = direction(values["direction"] ?: "auto"),
@@ -88,7 +95,9 @@ internal object ToastKitBridgeNormalizer {
             loading = values["loading"]?.let { boolean(it, "loading") } ?: false,
             swipeToDismiss = values["swipe_to_dismiss"]?.let { boolean(it, "swipe_to_dismiss") } ?: true,
             dismissible = values["dismissible"]?.let { boolean(it, "dismissible") } ?: false,
-            action = optionalValue(values["action"])?.let(::action),
+            actions = if (values.containsKey("actions")) actions(values["actions"] ?: emptyList<Any>())
+                else optionalValue(values["action"])?.let(::action)?.let(::listOf) ?: emptyList(),
+            data = values["data"]?.let(::data) ?: emptyMap(),
             style = style(values["style"] ?: emptyMap<String, Any>(), variantStyle(values["variant"] as? String ?: "neutral")),
             strategy = strategy(values["strategy"] ?: "queue"),
             maxVisible = positiveInt(values["max_visible"] ?: 3, "max_visible"),
@@ -105,9 +114,40 @@ internal object ToastKitBridgeNormalizer {
         return ToastKitIcon(name, android)
     }
 
+    private fun iconSize(value: Any) = ToastKitIconSize.valueOf(
+        enumString(value, "icon size", setOf("sm", "md", "lg")).uppercase(),
+    )
+
     private fun action(value: Any): ToastKitAction {
         val map = stringMap(value) ?: throw ToastKitInputException("action must be an object")
-        return ToastKitAction(requiredString(map, "id"), requiredString(map, "label"))
+        return ToastKitAction(
+            requiredString(map, "id"),
+            requiredString(map, "label"),
+            map["color"]?.let { color(it, "action.color") },
+        )
+    }
+
+    private fun actions(value: Any): List<ToastKitAction> {
+        val values = when (value) {
+            is JSONArray -> (0 until value.length()).map(value::get)
+            is Collection<*> -> value.toList()
+            else -> throw ToastKitInputException("actions must be an array")
+        }
+        requireInput(values.size in 1..2, "actions must contain one or two actions")
+        val actions = values.map { action(it ?: throw ToastKitInputException("action must be an object")) }
+        requireInput(actions.map { it.id }.distinct().size == actions.size, "action IDs must be unique")
+        return actions
+    }
+
+    private fun data(value: Any): Map<String, Any> {
+        stringMap(value)?.let { return it }
+
+        // PHP encodes an empty associative array as JSON `[]`. Treat that
+        // representation as an empty data object so data remains optional.
+        if (value is JSONArray && value.length() == 0) return emptyMap()
+        if (value is Collection<*> && value.isEmpty()) return emptyMap()
+
+        throw ToastKitInputException("data must be an object")
     }
 
     private fun nativeMode(value: Any): Pair<Boolean, Boolean> {
@@ -189,6 +229,7 @@ internal object ToastKitBridgeNormalizer {
 
     private fun variant(value: Any): String = enumString(value, "variant", setOf("neutral", "success", "error", "warning", "info"))
     private fun position(value: Any) = ToastKitPosition.valueOf(enumString(value, "position", setOf("top", "center", "bottom")).uppercase())
+    private fun presentation(value: Any) = ToastKitPresentation.valueOf(enumString(value, "presentation", setOf("standard", "dynamic")).uppercase())
     private fun animation(value: Any) = ToastKitAnimation.valueOf(enumString(value, "animation", setOf("fade", "slide", "scale", "spring", "snap", "pop", "reveal", "bounce")).uppercase())
     private fun direction(value: Any) = ToastKitDirection.valueOf(enumString(value, "direction", setOf("auto", "left", "right", "top", "bottom")).uppercase())
     private fun strategy(value: Any) = ToastKitStrategy.valueOf(enumString(value, "strategy", setOf("queue", "stack")).uppercase())

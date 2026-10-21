@@ -13,6 +13,7 @@ it('sends the show contract with full defaults', function () {
             'title' => null,
             'variant' => 'neutral',
             'position' => 'bottom',
+            'presentation' => 'standard',
             'duration' => 3000,
             'persistent' => false,
             'animation' => 'scale',

@@ -6,6 +6,7 @@ use BackedEnum;
 use Victorycodedev\ToastKit\Enums\ToastAnimation;
 use Victorycodedev\ToastKit\Enums\ToastDirection;
 use Victorycodedev\ToastKit\Enums\ToastPosition;
+use Victorycodedev\ToastKit\Enums\ToastPresentation;
 use Victorycodedev\ToastKit\Enums\ToastStrategy;
 use Victorycodedev\ToastKit\Enums\ToastTextAlign;
 use Victorycodedev\ToastKit\Enums\ToastTextSize;
@@ -16,6 +17,7 @@ use Victorycodedev\ToastKit\Exceptions\InvalidToastConfigurationException;
 trait ConfiguresToast
 {
     abstract protected function put(string $key, mixed $value): static;
+    abstract protected function forget(string $key): static;
     abstract protected function putStyle(string $key, mixed $value): static;
     abstract protected function putTypography(string $group, array $values): static;
 
@@ -87,9 +89,28 @@ trait ConfiguresToast
         return $this->put('icon', $icon);
     }
 
+    public function iconSize(string $size): static
+    {
+        if (! in_array($size, ['sm', 'md', 'lg'], true)) {
+            throw new InvalidToastConfigurationException("Invalid toast icon size: {$size}.");
+        }
+
+        return $this->put('icon_size', $size);
+    }
+
     public function position(ToastPosition|string $position): static
     {
         return $this->put('position', $this->enumValue(ToastPosition::class, $position, 'position'));
+    }
+
+    public function presentation(ToastPresentation|string $presentation): static
+    {
+        return $this->put('presentation', $this->enumValue(ToastPresentation::class, $presentation, 'presentation'));
+    }
+
+    public function dynamic(): static
+    {
+        return $this->presentation(ToastPresentation::Dynamic);
     }
 
     public function native(bool $ios = true, bool $android = true): static
@@ -148,7 +169,56 @@ trait ConfiguresToast
     public function action(string $label, string $id): static
     {
         if (trim($label) === '' || trim($id) === '') throw new InvalidToastConfigurationException('Action label and ID must not be empty.');
+        $this->forget('actions');
         return $this->put('action', ['id' => $id, 'label' => $label]);
+    }
+
+    /**
+     * @param array<int, array{id: string, label: string, color?: string}> $actions
+     */
+    public function actions(array $actions): static
+    {
+        if (count($actions) < 1 || count($actions) > 2) {
+            throw new InvalidToastConfigurationException('Toast actions must contain one or two actions.');
+        }
+
+        $normalized = [];
+        $ids = [];
+        foreach ($actions as $action) {
+            if (! is_array($action) || ! isset($action['label'], $action['id']) || ! is_string($action['label']) || ! is_string($action['id'])) {
+                throw new InvalidToastConfigurationException('Each toast action must specify a string label and ID.');
+            }
+            if (trim($action['label']) === '' || trim($action['id']) === '') {
+                throw new InvalidToastConfigurationException('Action label and ID must not be empty.');
+            }
+            if (isset($ids[$action['id']])) {
+                throw new InvalidToastConfigurationException('Toast action IDs must be unique.');
+            }
+
+            $ids[$action['id']] = true;
+            $normalizedAction = ['id' => $action['id'], 'label' => $action['label']];
+            if (array_key_exists('color', $action)) {
+                if (! is_string($action['color'])) {
+                    throw new InvalidToastConfigurationException('Action color must be a hexadecimal color string.');
+                }
+                $normalizedAction['color'] = $this->color($action['color']);
+            }
+            $normalized[] = $normalizedAction;
+        }
+
+        $this->forget('action');
+        return $this->put('actions', $normalized);
+    }
+
+    public function data(array $data): static
+    {
+        try {
+            json_encode($data, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            throw new InvalidToastConfigurationException('Toast data must be JSON serializable.');
+        }
+
+        return $this->put('data', $data);
     }
 
     public function background(string $color): static

@@ -13,6 +13,10 @@ export class PendingToastBase {
     this.values[key] = value;
     return this;
   }
+  unset(key) {
+    delete this.values[key];
+    return this;
+  }
   message(value) {
     return this.set("message", nonEmpty(value, "message"));
   }
@@ -52,8 +56,17 @@ export class PendingToastBase {
       throw new TypeError("An icon name or platform override is required");
     return this.set("icon", icon);
   }
+  iconSize(value) {
+    return this.set("icon_size", oneOf(value, "icon size"));
+  }
   position(value) {
     return this.set("position", oneOf(value, "position"));
+  }
+  presentation(value) {
+    return this.set("presentation", oneOf(value, "presentation"));
+  }
+  dynamic() {
+    return this.presentation("dynamic");
   }
   native({ ios = true, android = true } = {}) {
     return this.set("native", { ios: Boolean(ios), android: Boolean(android) });
@@ -93,10 +106,44 @@ export class PendingToastBase {
     return this.set("dismissible", Boolean(enabled));
   }
   action(label, id) {
+    this.unset("actions");
     return this.set("action", {
       id: nonEmpty(id, "action ID"),
       label: nonEmpty(label, "action label"),
     });
+  }
+  actions(actions) {
+    if (!Array.isArray(actions) || actions.length < 1 || actions.length > 2)
+      throw new TypeError("toast actions must contain one or two actions");
+    const normalized = actions.map((action) => {
+      if (action === null || typeof action !== "object" || Array.isArray(action))
+        throw new TypeError("each toast action must specify a label and ID");
+      const normalized = {
+        id: nonEmpty(action.id, "action ID"),
+        label: nonEmpty(action.label, "action label"),
+      };
+      if (action.color !== undefined)
+        normalized.color = color(action.color, "action color");
+      return normalized;
+    });
+    if (new Set(normalized.map(({ id }) => id)).size !== normalized.length)
+      throw new TypeError("toast action IDs must be unique");
+    this.unset("action");
+    return this.set("actions", normalized);
+  }
+  data(value) {
+    if (value === null || typeof value !== "object" || Array.isArray(value))
+      throw new TypeError("toast data must be an object");
+    try {
+      const encoded = JSON.stringify(value, (_key, item) => {
+        if (["bigint", "function", "symbol"].includes(typeof item))
+          throw new TypeError("unsupported toast data value");
+        return item;
+      });
+      return this.set("data", JSON.parse(encoded));
+    } catch {
+      throw new TypeError("toast data must be serializable");
+    }
   }
   typography(group, options) {
     const values = {};

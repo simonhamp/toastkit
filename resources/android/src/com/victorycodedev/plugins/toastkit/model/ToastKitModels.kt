@@ -3,15 +3,17 @@ package com.victorycodedev.plugins.toastkit.model
 import androidx.compose.ui.graphics.Color
 
 internal enum class ToastKitPosition { TOP, CENTER, BOTTOM }
+internal enum class ToastKitPresentation { STANDARD, DYNAMIC }
 internal enum class ToastKitAnimation { FADE, SLIDE, SCALE, SPRING, SNAP, POP, REVEAL, BOUNCE }
 internal enum class ToastKitDirection { AUTO, LEFT, RIGHT, TOP, BOTTOM }
 internal enum class ToastKitStrategy { QUEUE, STACK }
 internal enum class ToastKitTextSize { XS, SM, BASE, LG, XL }
 internal enum class ToastKitTextWeight { NORMAL, MEDIUM, SEMIBOLD, BOLD }
 internal enum class ToastKitTextAlign { LEFT, CENTER, RIGHT }
+internal enum class ToastKitIconSize { SM, MD, LG }
 
 internal data class ToastKitIcon(val name: String?, val android: String?)
-internal data class ToastKitAction(val id: String, val label: String)
+internal data class ToastKitAction(val id: String, val label: String, val color: Color? = null)
 internal data class ToastKitTypography(
     val font: String? = null,
     val size: ToastKitTextSize? = null,
@@ -39,7 +41,9 @@ internal data class ToastKitConfiguration(
     val title: String?,
     val variant: String,
     val icon: ToastKitIcon?,
+    val iconSize: ToastKitIconSize?,
     val position: ToastKitPosition,
+    val presentation: ToastKitPresentation,
     val durationMs: Long?,
     val animation: ToastKitAnimation,
     val direction: ToastKitDirection,
@@ -47,7 +51,8 @@ internal data class ToastKitConfiguration(
     val loading: Boolean,
     val swipeToDismiss: Boolean,
     val dismissible: Boolean,
-    val action: ToastKitAction?,
+    val actions: List<ToastKitAction>,
+    val data: Map<String, Any>,
     val style: ToastKitStyle,
     val strategy: ToastKitStrategy,
     val maxVisible: Int,

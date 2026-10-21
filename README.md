@@ -15,11 +15,13 @@ ToastKit renders toasts as native overlays — Jetpack Compose on Android, Swift
   - [Custom Toasts](#custom-toasts)
   - [Icons](#icons)
     - [Platform overrides](#platform-overrides)
+    - [Icon size](#icon-size)
   - [Typography](#typography)
     - [Font resolution](#font-resolution)
   - [Updating Toasts](#updating-toasts)
   - [Unique Toasts](#unique-toasts)
   - [Native Appearance](#native-appearance)
+  - [Dynamic Presentation](#dynamic-presentation)
   - [Opacity](#opacity)
   - [Progress \& Loading](#progress--loading)
   - [Animations \& Direction](#animations--direction)
@@ -54,9 +56,10 @@ ToastKit renders toasts as native overlays — Jetpack Compose on Android, Swift
 - **Queue strategy** — FIFO, one toast at a time.
 - **Stack strategy** — up to `maxVisible` toasts on screen with FIFO overflow.
 - **Live updates** — change a visible or queued toast's message, variant, icon, style, or timer without creating a new toast.
+- **Polished updates** — title and message changes crossfade in place instead of snapping.
 - **Unique toasts** — suppress duplicate work by a stable semantic key across visible, queued, stacked, and persistent toasts.
 - **Idempotent dismissal** — dismiss by ID or dismiss everything.
-- **Events** — `ToastShown`, `ToastDismissed`, and `ToastActionPressed`.
+- **Events** — `ToastShown`, `ToastDismissed`, `ToastPressed`, and `ToastActionPressed`.
 - **JavaScript API** — a fluent `Toast` API for web-facing apps.
 
 ## Installation
@@ -142,7 +145,7 @@ Toast::make('Download complete')
     ->show();
 ```
 
-Supported options include `title()`, `icon()`, `position()`, `duration()`, `persistent()`, `animation()`, `direction()`, `progress()`, `loading()`, `swipeToDismiss()`, `dismissible()`, `action()`, and the styling methods `background()`, `foreground()`, `iconColor()`, `actionColor()`, `cornerRadius()`, `padding()`, and `shadow()`. See the [API Reference](#api-reference) for the full list.
+Supported options include `title()`, `icon()`, `iconSize()`, `position()`, `presentation()`, `duration()`, `persistent()`, `animation()`, `direction()`, `progress()`, `loading()`, `swipeToDismiss()`, `dismissible()`, `action()`, and the styling methods `background()`, `foreground()`, `iconColor()`, `actionColor()`, `cornerRadius()`, `padding()`, and `shadow()`. See the [API Reference](#api-reference) for the full list.
 
 ## Icons
 
@@ -178,6 +181,18 @@ You can pass either override on its own:
 ```php
 Toast::make('Rated')->icon(ios: 'star.fill')->show();
 ```
+
+### Icon size
+
+Choose one of three icon sizes for the custom renderer:
+
+```php
+Toast::success('Uploaded')
+    ->iconSize('lg') // sm, md, or lg
+    ->show();
+```
+
+The size is `18`, `24`, or `32` points/dp respectively. Calling `iconSize()` is optional, so existing toasts retain their current platform default. Platform-native appearance ignores this option because the operating system controls native icon sizing.
 
 See NativePHP's [Icon name reference](https://nativephp.com/docs/mobile/4/edge-components/icon#icon-name-reference) for the names guaranteed to work consistently on both platforms.
 
@@ -386,6 +401,33 @@ Toast::update($id)
 ```
 
 On iOS 26 and later, ToastKit uses Apple's system Liquid Glass effect. Earlier supported iOS versions use SwiftUI's native regular material. Android uses the official Material 3 `Snackbar` component inside ToastKit's existing overlay, retaining the established lifecycle and event pipeline.
+
+## Dynamic Presentation
+
+Dynamic presentation briefly flows from the top camera area with a liquid-drop connector, starts as a compact foreground pill, and smoothly expands to reveal the toast content. The connector retracts once expansion finishes instead of remaining above the toast. The effect has a native SwiftUI design on iOS and a Material-style Compose design on Android:
+
+```php
+Toast::info('Syncing contacts...')
+    ->dynamic()
+    ->loading()
+    ->persistent()
+    ->show();
+```
+
+`dynamic()` is a shortcut for `presentation('dynamic')`. Use `presentation('standard')` to select the regular toast explicitly:
+
+```php
+Toast::success('Contacts synced')
+    ->presentation('dynamic')
+    ->progress(100)
+    ->action('View', 'view-contacts')
+    ->dismissible()
+    ->show();
+```
+
+Dynamic presentation works on iOS and Android and retains the normal toast lifecycle: entrance and exit animations, duration, persistence, queue/stack behavior, unique keys, live updates, progress, loading, one action, close controls, swipe dismissal, opacity, colors, typography, and icon sizing all remain available. It is automatically anchored at the top, so callers do not need to add `position('top')`.
+
+The dynamic renderer controls its placement, so `position()` and `direction()` are ignored.`native()` is also ignored while dynamic presentation is selected because dynamic presentation is already a platform-specific native design. The retained placement and native settings apply again if a sparse update changes the presentation back to `standard`.
 
 ## Opacity
 
@@ -628,13 +670,41 @@ Dismissals are idempotent — dismissing an ID that is already gone is a no-op.
 
 ## Actions & Events
 
-Add a native action button and handle its press:
+Attach small routing or context values with `data()`, then handle a press anywhere on the toast body:
+
+```php
+use Native\Mobile\Attributes\On;
+use Victorycodedev\ToastKit\Events\ToastPressed;
+
+Toast::info('New message from Grace')
+    ->data([
+        'conversation_id' => 42,
+        'message_id' => 781,
+    ])
+    ->dynamic()
+    ->show();
+
+#[On(ToastPressed::class)]
+public function openConversation(string $toastId, array $data): void
+{
+    Toast::dismiss($toastId);
+
+    $this->redirectRoute('conversations.show', [
+        'conversation' => $data['conversation_id'],
+    ]);
+}
+```
+
+Whole-toast pressing is enabled only when non-empty `data()` is attached. Toasts without attached data keep their existing interaction behavior and do not emit `ToastPressed`; calling `data([])` disables whole-toast pressing again. A body press does not automatically dismiss the toast, so the listener decides whether to dismiss, update, or retain it. Action and close controls consume their own presses and do not also emit `ToastPressed`.
+
+Add a native action button and handle its press independently:
 
 ```php
 use Native\Mobile\Attributes\On;
 use Victorycodedev\ToastKit\Events\ToastActionPressed;
 
 Toast::error('Connection lost')
+    ->data(['request_id' => 91])
     ->action(
         label: 'Retry',
         id: 'retry',
@@ -645,6 +715,7 @@ Toast::error('Connection lost')
 public function handleToastAction(
     string $toastId,
     string $actionId,
+    array $data,
 ): void {
     if ($actionId === 'retry') {
         $this->retry();
@@ -652,7 +723,21 @@ public function handleToastAction(
 }
 ```
 
-Pressing an action emits `ToastActionPressed` and dismisses the toast.
+Pressing an action emits `ToastActionPressed` with the attached data and dismisses the toast. Keep attached data small and JSON-serializable—IDs, types, and slugs are preferable to complete models or sensitive values. Calling `data()` during an update replaces the attached object; `data([])` clears it.
+
+Use `actions()` when a toast needs two choices. Every entry must explicitly provide both a non-empty `label` and a unique non-empty `id`:
+
+```php
+Toast::warning('Delete this draft?')
+    ->data(['draft_id' => 42])
+    ->actions([
+        ['label' => 'Cancel', 'id' => 'cancel', 'color' => '#D1D5DB'],
+        ['label' => 'Delete', 'id' => 'delete', 'color' => '#EF4444'],
+    ])
+    ->show();
+```
+
+`actions()` accepts one or two actions. The optional `color` on an individual action overrides `actionColor()` for that button; actions without a color continue using the shared action color or platform default. Pressing either action emits `ToastActionPressed` with that action's ID and then automatically dismisses the toast, matching `action()`. If `action()` and `actions()` are called on the same builder, the last method called wins. This makes it possible for an individual toast to override actions inherited from a preset without sending conflicting bridge values.
 
 The other events follow the same pattern:
 
@@ -908,13 +993,14 @@ Refer to your Fetch package's documentation for its exact API surface.
 
 ## Events
 
-ToastKit dispatches three events. Listen with NativePHP's `#[On]` attribute:
+ToastKit dispatches four events. Listen with NativePHP's `#[On]` attribute:
 
 | Event | Payload |
 | --- | --- |
 | `Victorycodedev\ToastKit\Events\ToastShown` | `toastId` (string) |
 | `Victorycodedev\ToastKit\Events\ToastDismissed` | `toastId` (string), `reason` (string) |
-| `Victorycodedev\ToastKit\Events\ToastActionPressed` | `toastId` (string), `actionId` (string) |
+| `Victorycodedev\ToastKit\Events\ToastPressed` | `toastId` (string), `data` (array) |
+| `Victorycodedev\ToastKit\Events\ToastActionPressed` | `toastId` (string), `actionId` (string), `data` (array) |
 
 ```php
 use Native\Mobile\Attributes\On;
@@ -1013,7 +1099,10 @@ Native::test(ProfileScreen::class)
 | `success()` / `error()` / `warning()` / `info()` / `neutral()` | Set the variant. |
 | `variant(ToastVariant\|string $variant)` | Set the variant by enum or string. |
 | `icon(?string $name = null, ?string $ios = null, ?string $android = null)` | Set an icon using string names, with optional SF Symbol (`ios:`) / Material Icon (`android:`) overrides. See [Icons](#icons). |
+| `iconSize(string $size)` | Set custom-renderer icon size to `sm`, `md`, or `lg`; native appearance ignores it. |
 | `position(ToastPosition\|string $position)` | `top`, `center`, or `bottom`. |
+| `presentation(ToastPresentation\|string $presentation)` | Select `standard` or `dynamic` presentation. |
+| `dynamic()` | Shortcut for `presentation('dynamic')`. |
 | `native(bool $ios = true, bool $android = true)` | Use platform-native appearance selectively; custom rendering remains the default. |
 | `opacity(float $opacity = 0.8)` | Set whole-toast opacity from `0.0` to `1.0`; out-of-range values are clamped. |
 | `duration(int $milliseconds)` | Set the visible duration (makes the toast timed). |
@@ -1025,6 +1114,8 @@ Native::test(ProfileScreen::class)
 | `swipeToDismiss(bool $enabled = true)` | Enable or disable swipe-to-dismiss. |
 | `dismissible(bool $enabled = true)` | Show a visible close control. |
 | `action(string $label, string $id)` | Add an action button with a label and ID. |
+| `actions(array $actions)` | Add one or two actions; every entry requires a unique `id` and a `label`, with an optional per-action `color`. |
+| `data(array $data)` | Attach JSON-serializable context delivered with body-press and action events. |
 | `background(string $color)` | Set the background color. |
 | `foreground(string $color)` | Set the text color. |
 | `iconColor(string $color)` | Set the icon color. |
@@ -1048,6 +1139,7 @@ Native::test(ProfileScreen::class)
 | --- | --- |
 | `ToastVariant` | `success`, `error`, `warning`, `info`, `neutral` |
 | `ToastPosition` | `top`, `center`, `bottom` |
+| `ToastPresentation` | `standard`, `dynamic` |
 | `ToastAnimation` | `fade`, `slide`, `scale`, `spring`, `snap`, `pop`, `reveal`, `bounce` |
 | `ToastDirection` | `auto`, `left`, `right`, `top`, `bottom` |
 | `ToastStrategy` | `queue`, `stack` |
@@ -1062,13 +1154,16 @@ Native::test(ProfileScreen::class)
 | --- | --- |
 | `variant` | `neutral` |
 | `position` | `bottom` |
+| `presentation` | `standard` |
 | `duration` | `3000` ms |
 | `persistent` | `false` |
 | `animation` | `scale` |
 | `direction` | `auto` |
 | `loading` | `false` |
+| `icon_size` | Platform default (omitted) |
 | `swipe_to_dismiss` | `true` |
 | `dismissible` | `false` |
+| `data` | Empty and omitted unless configured |
 | `strategy` | `queue` |
 | `max_visible` | `3` |
 | `corner_radius` | `16` |

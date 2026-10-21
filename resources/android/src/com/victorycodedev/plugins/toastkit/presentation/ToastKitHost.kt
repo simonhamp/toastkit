@@ -5,11 +5,13 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -18,6 +20,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,9 +29,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import android.view.accessibility.AccessibilityManager
 import android.content.Context
 import android.provider.Settings
@@ -43,10 +50,11 @@ import com.nativephp.mobile.ui.NativeUIThemeProvider
 import com.victorycodedev.plugins.toastkit.manager.ToastKitManager
 import com.victorycodedev.plugins.toastkit.model.*
 import kotlin.math.abs
+import kotlinx.coroutines.delay
 
 @Composable
 internal fun ToastKitHost(position: ToastKitPosition) {
-    val items = ToastKitManager.rendered.filter { it.position == position }
+    val items = ToastKitManager.rendered.filter { effectivePosition(it) == position }
     val vertical = when (position) { ToastKitPosition.TOP -> Arrangement.Top; ToastKitPosition.CENTER -> Arrangement.Center; ToastKitPosition.BOTTOM -> Arrangement.Bottom }
     val safeArea = when (position) {
         ToastKitPosition.TOP -> Modifier.statusBarsPadding()
@@ -66,6 +74,7 @@ internal fun ToastKitHost(position: ToastKitPosition) {
 
 @Composable
 private fun ToastKitCard(toast: ToastKitConfiguration) {
+    val position = effectivePosition(toast)
     var x by remember(toast.id) { mutableFloatStateOf(0f) }
     var y by remember(toast.id) { mutableFloatStateOf(0f) }
     var settling by remember(toast.id) { mutableStateOf(false) }
@@ -80,13 +89,13 @@ private fun ToastKitCard(toast: ToastKitConfiguration) {
         animationSpec = if (reduceMotion) tween(100) else tween(220),
         label = "toast-progress",
     )
-    val gesture = if (!toast.swipeToDismiss) Modifier else Modifier.pointerInput(toast.id) {
+    val gesture = if (!toast.swipeToDismiss) Modifier else Modifier.pointerInput(toast.id, position) {
         detectDragGestures(
             onDragStart = { velocityTracker.resetTracking() },
             onDragEnd = {
-                val distance = if (toast.position == ToastKitPosition.CENTER) abs(x) else abs(y)
+                val distance = if (position == ToastKitPosition.CENTER) abs(x) else abs(y)
                 val velocity = velocityTracker.calculateVelocity()
-                val speed = if (toast.position == ToastKitPosition.CENTER) abs(velocity.x) else abs(velocity.y)
+                val speed = if (position == ToastKitPosition.CENTER) abs(velocity.x) else abs(velocity.y)
                 if (distance > 80.dp.toPx() || speed > 900f) ToastKitManager.dismiss(toast.id, "swipe") else { settling = true; x = 0f; y = 0f }
             },
             onDragCancel = { settling = true; x = 0f; y = 0f },
@@ -94,14 +103,15 @@ private fun ToastKitCard(toast: ToastKitConfiguration) {
             change.consume()
             velocityTracker.addPosition(change.uptimeMillis, change.position)
             settling = false
-            when (toast.position) {
+            when (position) {
                 ToastKitPosition.TOP -> y = (y + amount.y).coerceAtMost(0f)
                 ToastKitPosition.BOTTOM -> y = (y + amount.y).coerceAtLeast(0f)
                 ToastKitPosition.CENTER -> x += amount.x
             }
         }
     }
-    val enter = if (reduceMotion || toast.nativeAndroid) fadeIn(tween(120)) else when (toast.animation) {
+    val usesNativeStandard = toast.nativeAndroid && toast.presentation == ToastKitPresentation.STANDARD
+    val enter = if (reduceMotion || usesNativeStandard) fadeIn(tween(120)) else when (toast.animation) {
         ToastKitAnimation.FADE -> fadeIn(tween(180))
         ToastKitAnimation.SLIDE -> directionalEnter(toast, tween(220)) + fadeIn()
         ToastKitAnimation.SCALE -> scaleIn(tween(180), initialScale = .9f) + fadeIn()
@@ -111,7 +121,7 @@ private fun ToastKitCard(toast: ToastKitConfiguration) {
         ToastKitAnimation.REVEAL -> expandHorizontally(tween(240), expandFrom = revealAlignment(toast)) + fadeIn(tween(160))
         ToastKitAnimation.BOUNCE -> directionalEnter(toast, spring(dampingRatio = .45f, stiffness = 360f)) + fadeIn(tween(120))
     }
-    val exit = if (reduceMotion || toast.nativeAndroid) fadeOut(tween(100)) else when (toast.animation) {
+    val exit = if (reduceMotion || usesNativeStandard) fadeOut(tween(100)) else when (toast.animation) {
         ToastKitAnimation.FADE -> fadeOut(tween(160))
         ToastKitAnimation.SLIDE -> directionalExit(toast, tween(220)) + fadeOut()
         ToastKitAnimation.SCALE -> scaleOut(tween(160), targetScale = .9f) + fadeOut()
@@ -125,12 +135,21 @@ private fun ToastKitCard(toast: ToastKitConfiguration) {
     val shouldBeVisible = toast.id !in ToastKitManager.exiting
     LaunchedEffect(shouldBeVisible) { visibility.targetState = shouldBeVisible }
     AnimatedVisibility(visibleState = visibility, enter = enter, exit = exit) {
-        val interaction = Modifier.padding(vertical = 4.dp).widthIn(max = 560.dp).fillMaxWidth()
+        val interaction = Modifier.padding(vertical = 4.dp).widthIn(max = 560.dp)
+                .then(if (toast.presentation == ToastKitPresentation.STANDARD) Modifier.fillMaxWidth() else Modifier)
+                .semantics { liveRegion = LiveRegionMode.Polite }
+                .then(
+                    if (toast.data.isNotEmpty()) Modifier.clickable(onClickLabel = "Open notification") {
+                        ToastKitManager.press(toast.id)
+                    } else Modifier,
+                )
                 .graphicsLayer { translationX = displayedX; translationY = displayedY; alpha = (1f - (abs(displayedX) + abs(displayedY)) / 700f).coerceIn(.35f, 1f) }
                 .then(toast.opacity?.let { Modifier.alpha(it) } ?: Modifier)
                 .then(gesture)
-        if (toast.nativeAndroid) {
-            NativeToastKitCard(toast, displayedProgress, interaction)
+        if (toast.presentation == ToastKitPresentation.DYNAMIC) {
+            DynamicToastKitCard(toast, displayedProgress, interaction, reduceMotion, shouldBeVisible)
+        } else if (toast.nativeAndroid) {
+            NativeToastKitCard(toast, displayedProgress, interaction, reduceMotion)
         } else {
         Column(
             modifier = interaction
@@ -142,38 +161,49 @@ private fun ToastKitCard(toast: ToastKitConfiguration) {
             if (toast.progress == null && toast.loading) {
                 CircularProgressIndicator(Modifier.size(22.dp), color = toast.style.iconColor, strokeWidth = 2.5.dp)
             } else toast.icon?.let {
-                MaterialIcon(it.android ?: it.name ?: "circle", "Toast icon", size = 24.dp, tint = toast.style.iconColor)
+                MaterialIcon(it.android ?: it.name ?: "circle", "Toast icon", size = toastIconSize(toast.iconSize, 24).dp, tint = toast.style.iconColor)
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                toast.title?.let { title ->
-                    Text(
-                        text = title,
+                AnimatedContent(
+                    targetState = toast.title,
+                    transitionSpec = { fadeIn(tween(if (reduceMotion) 1 else 140)) togetherWith fadeOut(tween(if (reduceMotion) 1 else 100)) },
+                    label = "toast-title-update",
+                ) { displayedTitle ->
+                    displayedTitle?.let { Text(
+                        text = displayedTitle,
                         color = toast.style.foreground,
                         fontSize = toast.titleText?.size?.let(::toastTextSize) ?: 16.sp,
                         fontWeight = toast.titleText?.weight?.let(::toastTextWeight) ?: FontWeight.SemiBold,
                         fontStyle = toast.titleText?.italic?.let { if (it) FontStyle.Italic else FontStyle.Normal },
                         fontFamily = toast.titleText?.font?.let(::toastFontFamily),
-                        textAlign = toast.titleText?.align?.let(::toastTextAlign) ?: TextAlign.Left,
+                        textAlign = toast.titleText?.align?.let(::toastTextAlign) ?: TextAlign.Start,
                         modifier = Modifier.fillMaxWidth(),
-                    )
+                    ) }
                 }
-                Text(
-                    text = toast.message,
+                AnimatedContent(
+                    targetState = toast.message,
+                    transitionSpec = { fadeIn(tween(if (reduceMotion) 1 else 140)) togetherWith fadeOut(tween(if (reduceMotion) 1 else 100)) },
+                    label = "toast-message-update",
+                ) { displayedMessage -> Text(
+                    text = displayedMessage,
                     color = toast.style.foreground,
                     fontSize = toast.text?.size?.let(::toastTextSize) ?: toastTextSize(ToastKitTextSize.BASE),
                     fontWeight = toast.text?.weight?.let(::toastTextWeight) ?: FontWeight.Medium,
                     fontStyle = toast.text?.italic?.let { if (it) FontStyle.Italic else FontStyle.Normal },
                     fontFamily = toast.text?.font?.let(::toastFontFamily),
-                    textAlign = toast.text?.align?.let(::toastTextAlign) ?: TextAlign.Left,
+                    textAlign = toast.text?.align?.let(::toastTextAlign) ?: TextAlign.Start,
                     modifier = Modifier.fillMaxWidth(),
-                )
+                ) }
             }
-            toast.action?.let { action ->
-                Text(action.label, color = toast.style.actionColor, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.pointerInput(action.id) { detectTapGestures { ToastKitManager.action(toast.id, action.id) } })
+            toast.actions.forEach { action ->
+                TextButton(
+                    onClick = { ToastKitManager.action(toast.id, action.id) },
+                    colors = ButtonDefaults.textButtonColors(contentColor = action.color ?: toast.style.actionColor),
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                ) { Text(action.label, fontWeight = FontWeight.Bold) }
             }
             if (toast.dismissible) {
-                Box(Modifier.size(32.dp).pointerInput(toast.id) { detectTapGestures { ToastKitManager.dismiss(toast.id) } }, contentAlignment = Alignment.Center) {
+                IconButton(onClick = { ToastKitManager.dismiss(toast.id) }) {
                     MaterialIcon("close", "Dismiss", size = 20.dp, tint = toast.style.foreground)
                 }
             }
@@ -193,7 +223,162 @@ private fun ToastKitCard(toast: ToastKitConfiguration) {
 }
 
 @Composable
-private fun NativeToastKitCard(toast: ToastKitConfiguration, displayedProgress: Float, modifier: Modifier) {
+private fun DynamicToastKitCard(
+    toast: ToastKitConfiguration,
+    displayedProgress: Float,
+    modifier: Modifier,
+    reduceMotion: Boolean,
+    visible: Boolean,
+) {
+    var expanded by remember(toast.id) { mutableStateOf(false) }
+    var dropExtended by remember(toast.id) { mutableStateOf(false) }
+    LaunchedEffect(visible) {
+        if (visible) {
+            if (reduceMotion) {
+                dropExtended = false
+                expanded = true
+                return@LaunchedEffect
+            }
+            dropExtended = true
+            delay(70)
+            expanded = true
+            delay(180)
+            dropExtended = false
+        } else {
+            expanded = false
+            if (!reduceMotion) delay(45)
+            dropExtended = false
+        }
+    }
+    val dropScale by animateFloatAsState(
+        targetValue = if (dropExtended) 1f else 0f,
+        animationSpec = if (reduceMotion) tween(1) else spring(dampingRatio = .72f, stiffness = 620f),
+        label = "dynamic-toast-drop",
+    )
+
+    Box(
+        modifier = modifier.then(if (expanded) Modifier.fillMaxWidth() else Modifier),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        Box(
+            Modifier
+                .offset(y = (-20).dp)
+                .size(width = 20.dp, height = 26.dp)
+                .graphicsLayer {
+                    scaleY = dropScale
+                    transformOrigin = TransformOrigin(0.5f, 0f)
+                }
+                .background(toast.style.background, DynamicToastDropShape),
+        )
+        Surface(
+            modifier = Modifier
+                .then(if (expanded) Modifier.fillMaxWidth() else Modifier)
+                .animateContentSize(
+                    animationSpec = if (reduceMotion) tween(1) else spring(dampingRatio = .78f, stiffness = 520f),
+                ),
+            shape = RoundedCornerShape(toast.style.cornerRadius.dp),
+            color = toast.style.background,
+            contentColor = toast.style.foreground,
+            shadowElevation = if (toast.style.shadow) 10.dp else 0.dp,
+        ) {
+            Column {
+                Row(
+                    modifier = Modifier.padding(toast.style.padding.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    if (toast.progress == null && toast.loading) {
+                        CircularProgressIndicator(Modifier.size(22.dp), color = toast.style.iconColor, strokeWidth = 2.5.dp)
+                    } else {
+                        val icon = toast.icon
+                        MaterialIcon(
+                            icon?.android ?: icon?.name ?: "notifications",
+                            "Toast notification",
+                            size = toastIconSize(toast.iconSize, 22).dp,
+                            tint = toast.style.iconColor,
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = expanded,
+                        modifier = Modifier.weight(1f),
+                        enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
+                        exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut(),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                AnimatedContent(
+                                    targetState = toast.title,
+                                    transitionSpec = { fadeIn(tween(if (reduceMotion) 1 else 140)) togetherWith fadeOut(tween(if (reduceMotion) 1 else 100)) },
+                                    label = "dynamic-toast-title-update",
+                                ) { title ->
+                                    title?.let { Text(
+                                        title,
+                                        color = toast.style.foreground,
+                                        fontSize = toast.titleText?.size?.let(::toastTextSize) ?: 16.sp,
+                                        fontWeight = toast.titleText?.weight?.let(::toastTextWeight) ?: FontWeight.SemiBold,
+                                        fontStyle = toast.titleText?.italic?.let { italic -> if (italic) FontStyle.Italic else FontStyle.Normal },
+                                        fontFamily = toast.titleText?.font?.let(::toastFontFamily),
+                                        maxLines = 1,
+                                    ) }
+                                }
+                                AnimatedContent(
+                                    targetState = toast.message,
+                                    transitionSpec = { fadeIn(tween(if (reduceMotion) 1 else 140)) togetherWith fadeOut(tween(if (reduceMotion) 1 else 100)) },
+                                    label = "dynamic-toast-message-update",
+                                ) { message -> Text(
+                                    message,
+                                    color = toast.style.foreground,
+                                    fontSize = toast.text?.size?.let(::toastTextSize) ?: toastTextSize(ToastKitTextSize.BASE),
+                                    fontWeight = toast.text?.weight?.let(::toastTextWeight) ?: FontWeight.Medium,
+                                    fontStyle = toast.text?.italic?.let { if (it) FontStyle.Italic else FontStyle.Normal },
+                                    fontFamily = toast.text?.font?.let(::toastFontFamily),
+                                    maxLines = 2,
+                                ) }
+                            }
+                            toast.actions.forEach { action ->
+                                TextButton(
+                                    onClick = { ToastKitManager.action(toast.id, action.id) },
+                                    colors = ButtonDefaults.textButtonColors(contentColor = action.color ?: toast.style.actionColor),
+                                    contentPadding = PaddingValues(horizontal = 8.dp),
+                                ) { Text(action.label, fontWeight = FontWeight.Bold, maxLines = 1) }
+                            }
+                            if (toast.dismissible) {
+                                IconButton(onClick = { ToastKitManager.dismiss(toast.id) }) {
+                                    MaterialIcon("close", "Dismiss", size = 20.dp, tint = toast.style.foreground)
+                                }
+                            }
+                        }
+                    }
+                }
+                if (expanded && toast.progress != null) {
+                    LinearProgressIndicator(
+                        progress = { displayedProgress },
+                        modifier = Modifier.fillMaxWidth().height(3.dp),
+                        color = toast.style.actionColor,
+                        trackColor = toast.style.foreground.copy(alpha = .22f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+private val DynamicToastDropShape = GenericShape { size, _ ->
+    moveTo(size.width * .36f, 0f)
+    cubicTo(size.width * .38f, size.height * .38f, size.width * .30f, size.height * .48f, size.width * .15f, size.height * .66f)
+    cubicTo(0f, size.height * .84f, size.width * .18f, size.height, size.width * .5f, size.height)
+    cubicTo(size.width * .82f, size.height, size.width, size.height * .84f, size.width * .85f, size.height * .66f)
+    cubicTo(size.width * .70f, size.height * .48f, size.width * .62f, size.height * .38f, size.width * .64f, 0f)
+    close()
+}
+
+@Composable
+private fun NativeToastKitCard(toast: ToastKitConfiguration, displayedProgress: Float, modifier: Modifier, reduceMotion: Boolean) {
     Snackbar(modifier = modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -203,13 +388,23 @@ private fun NativeToastKitCard(toast: ToastKitConfiguration, displayedProgress: 
                     MaterialIcon(it.android ?: it.name ?: "circle", "Toast icon", size = 24.dp, tint = LocalContentColor.current)
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    toast.title?.let { Text(it, style = androidx.compose.material3.MaterialTheme.typography.labelLarge) }
-                    Text(toast.message, style = androidx.compose.material3.MaterialTheme.typography.bodyMedium)
+                    AnimatedContent(
+                        targetState = toast.title,
+                        transitionSpec = { fadeIn(tween(if (reduceMotion) 1 else 140)) togetherWith fadeOut(tween(if (reduceMotion) 1 else 100)) },
+                        label = "native-toast-title-update",
+                    ) { title ->
+                        title?.let { Text(it, style = androidx.compose.material3.MaterialTheme.typography.labelLarge) }
+                    }
+                    AnimatedContent(
+                        targetState = toast.message,
+                        transitionSpec = { fadeIn(tween(if (reduceMotion) 1 else 140)) togetherWith fadeOut(tween(if (reduceMotion) 1 else 100)) },
+                        label = "native-toast-message-update",
+                    ) { Text(it, style = androidx.compose.material3.MaterialTheme.typography.bodyMedium) }
                 }
-                toast.action?.let { action ->
+                toast.actions.forEach { action ->
                     TextButton(
                         onClick = { ToastKitManager.action(toast.id, action.id) },
-                        colors = ButtonDefaults.textButtonColors(contentColor = SnackbarDefaults.actionColor),
+                        colors = ButtonDefaults.textButtonColors(contentColor = action.color ?: SnackbarDefaults.actionColor),
                     ) { Text(action.label) }
                 }
                 if (toast.dismissible) {
@@ -225,14 +420,18 @@ private fun NativeToastKitCard(toast: ToastKitConfiguration, displayedProgress: 
     }
 }
 
-private fun resolvedDirection(toast: ToastKitConfiguration): ToastKitDirection = when (toast.direction) {
-    ToastKitDirection.AUTO -> when (toast.position) {
-        ToastKitPosition.TOP -> ToastKitDirection.TOP
-        ToastKitPosition.BOTTOM -> ToastKitDirection.BOTTOM
-        ToastKitPosition.CENTER -> ToastKitDirection.TOP
+private fun resolvedDirection(toast: ToastKitConfiguration): ToastKitDirection =
+    if (toast.presentation == ToastKitPresentation.DYNAMIC) ToastKitDirection.TOP else when (toast.direction) {
+        ToastKitDirection.AUTO -> when (effectivePosition(toast)) {
+            ToastKitPosition.TOP -> ToastKitDirection.TOP
+            ToastKitPosition.BOTTOM -> ToastKitDirection.BOTTOM
+            ToastKitPosition.CENTER -> ToastKitDirection.TOP
+        }
+        else -> toast.direction
     }
-    else -> toast.direction
-}
+
+private fun effectivePosition(toast: ToastKitConfiguration): ToastKitPosition =
+    if (toast.presentation == ToastKitPresentation.DYNAMIC) ToastKitPosition.TOP else toast.position
 
 private fun directionalEnter(toast: ToastKitConfiguration, spec: androidx.compose.animation.core.FiniteAnimationSpec<androidx.compose.ui.unit.IntOffset>): EnterTransition =
     when (resolvedDirection(toast)) {
@@ -274,6 +473,13 @@ private fun toastTextAlign(align: ToastKitTextAlign) = when (align) {
     ToastKitTextAlign.LEFT -> TextAlign.Left
     ToastKitTextAlign.CENTER -> TextAlign.Center
     ToastKitTextAlign.RIGHT -> TextAlign.Right
+}
+
+private fun toastIconSize(size: ToastKitIconSize?, fallback: Int): Int = when (size) {
+    ToastKitIconSize.SM -> 18
+    ToastKitIconSize.MD -> 24
+    ToastKitIconSize.LG -> 32
+    null -> fallback
 }
 
 private fun toastFontFamily(font: String): FontFamily? =

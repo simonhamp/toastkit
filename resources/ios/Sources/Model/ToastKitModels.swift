@@ -1,12 +1,14 @@
 import SwiftUI
 
 enum ToastKitPosition: String { case top, center, bottom }
+enum ToastKitPresentation: String { case standard, dynamic }
 enum ToastKitAnimationKind: String { case fade, slide, scale, spring, snap, pop, reveal, bounce }
 enum ToastKitDirection: String { case auto, left, right, top, bottom }
 enum ToastKitStrategy: String { case queue, stack }
 enum ToastKitTextSize: String { case xs, sm, base, lg, xl }
 enum ToastKitTextWeight: String { case normal, medium, semibold, bold }
 enum ToastKitTextAlign: String { case left, center, right }
+enum ToastKitIconSize: String { case sm, md, lg }
 
 struct ToastKitIconConfiguration {
     let name: String?
@@ -16,6 +18,7 @@ struct ToastKitIconConfiguration {
 struct ToastKitActionConfiguration {
     let id: String
     let label: String
+    let color: Color?
 }
 
 struct ToastKitTypographyConfiguration {
@@ -46,7 +49,9 @@ struct ToastKitConfiguration: Identifiable {
     var title: String?
     var variant: String
     var icon: ToastKitIconConfiguration?
+    var iconSize: ToastKitIconSize?
     var position: ToastKitPosition
+    var presentation: ToastKitPresentation
     var durationMilliseconds: Int?
     var animation: ToastKitAnimationKind
     var direction: ToastKitDirection
@@ -54,7 +59,8 @@ struct ToastKitConfiguration: Identifiable {
     var loading: Bool
     var swipeToDismiss: Bool
     var dismissible: Bool
-    var action: ToastKitActionConfiguration?
+    var actions: [ToastKitActionConfiguration]
+    var data: [String: Any]
     var style: ToastKitStyleConfiguration
     var strategy: ToastKitStrategy
     var maxVisible: Int

@@ -39,8 +39,22 @@ final class ToastKitManager: ObservableObject {
 
     func pressAction(toastId: String, actionId: String) {
         guard let state = states[toastId], !state.terminated else { return }
-        ToastKitEventDispatcher.action(toastId, actionId: actionId)
+        ToastKitEventDispatcher.action(toastId, actionId: actionId, data: state.configuration.data)
         terminate(toastId, reason: "action")
+    }
+
+    func press(_ id: String) {
+        // Defer body presses by one main-actor turn. If the same touch belongs
+        // to an action or close button, that control terminates the toast first
+        // and prevents an additional ToastPressed event.
+        Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let self,
+                  let state = self.states[id],
+                  !state.terminated,
+                  !state.configuration.data.isEmpty else { return }
+            ToastKitEventDispatcher.pressed(id, data: state.configuration.data)
+        }
     }
 
     func updateInteractiveFrames(_ frames: [String: CGRect]) {
