@@ -301,52 +301,57 @@ private fun DynamicToastKitCard(
 
                     AnimatedVisibility(
                         visible = expanded,
+                        modifier = Modifier.weight(1f),
                         enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
                         exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut(),
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Column(Modifier.widthIn(min = 120.dp, max = 320.dp).weight(1f, fill = false)) {
-                            AnimatedContent(
-                                targetState = toast.title,
-                                transitionSpec = { fadeIn(tween(if (reduceMotion) 1 else 140)) togetherWith fadeOut(tween(if (reduceMotion) 1 else 100)) },
-                                label = "dynamic-toast-title-update",
-                            ) { title ->
-                                title?.let { Text(
-                                    title,
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                AnimatedContent(
+                                    targetState = toast.title,
+                                    transitionSpec = { fadeIn(tween(if (reduceMotion) 1 else 140)) togetherWith fadeOut(tween(if (reduceMotion) 1 else 100)) },
+                                    label = "dynamic-toast-title-update",
+                                ) { title ->
+                                    title?.let { Text(
+                                        title,
+                                        color = toast.style.foreground,
+                                        fontSize = toast.titleText?.size?.let(::toastTextSize) ?: 16.sp,
+                                        fontWeight = toast.titleText?.weight?.let(::toastTextWeight) ?: FontWeight.SemiBold,
+                                        fontStyle = toast.titleText?.italic?.let { italic -> if (italic) FontStyle.Italic else FontStyle.Normal },
+                                        fontFamily = toast.titleText?.font?.let(::toastFontFamily),
+                                        maxLines = 1,
+                                    ) }
+                                }
+                                AnimatedContent(
+                                    targetState = toast.message,
+                                    transitionSpec = { fadeIn(tween(if (reduceMotion) 1 else 140)) togetherWith fadeOut(tween(if (reduceMotion) 1 else 100)) },
+                                    label = "dynamic-toast-message-update",
+                                ) { message -> Text(
+                                    message,
                                     color = toast.style.foreground,
-                                    fontSize = toast.titleText?.size?.let(::toastTextSize) ?: 16.sp,
-                                    fontWeight = toast.titleText?.weight?.let(::toastTextWeight) ?: FontWeight.SemiBold,
-                                    fontStyle = toast.titleText?.italic?.let { italic -> if (italic) FontStyle.Italic else FontStyle.Normal },
-                                    fontFamily = toast.titleText?.font?.let(::toastFontFamily),
-                                    maxLines = 1,
+                                    fontSize = toast.text?.size?.let(::toastTextSize) ?: toastTextSize(ToastKitTextSize.BASE),
+                                    fontWeight = toast.text?.weight?.let(::toastTextWeight) ?: FontWeight.Medium,
+                                    fontStyle = toast.text?.italic?.let { if (it) FontStyle.Italic else FontStyle.Normal },
+                                    fontFamily = toast.text?.font?.let(::toastFontFamily),
+                                    maxLines = 2,
                                 ) }
                             }
-                            AnimatedContent(
-                                targetState = toast.message,
-                                transitionSpec = { fadeIn(tween(if (reduceMotion) 1 else 140)) togetherWith fadeOut(tween(if (reduceMotion) 1 else 100)) },
-                                label = "dynamic-toast-message-update",
-                            ) { message -> Text(
-                                message,
-                                color = toast.style.foreground,
-                                fontSize = toast.text?.size?.let(::toastTextSize) ?: toastTextSize(ToastKitTextSize.BASE),
-                                fontWeight = toast.text?.weight?.let(::toastTextWeight) ?: FontWeight.Medium,
-                                fontStyle = toast.text?.italic?.let { if (it) FontStyle.Italic else FontStyle.Normal },
-                                fontFamily = toast.text?.font?.let(::toastFontFamily),
-                                maxLines = 2,
-                            ) }
-                        }
-                        toast.action?.let { action ->
-                            TextButton(
-                                onClick = { ToastKitManager.action(toast.id, action.id) },
-                                colors = ButtonDefaults.textButtonColors(contentColor = toast.style.actionColor),
-                                contentPadding = PaddingValues(horizontal = 8.dp),
-                            ) { Text(action.label, fontWeight = FontWeight.Bold, maxLines = 1) }
-                        }
-                        if (toast.dismissible) {
-                            IconButton(onClick = { ToastKitManager.dismiss(toast.id) }) {
-                                MaterialIcon("close", "Dismiss", size = 20.dp, tint = toast.style.foreground)
+                            toast.action?.let { action ->
+                                TextButton(
+                                    onClick = { ToastKitManager.action(toast.id, action.id) },
+                                    colors = ButtonDefaults.textButtonColors(contentColor = toast.style.actionColor),
+                                    contentPadding = PaddingValues(horizontal = 8.dp),
+                                ) { Text(action.label, fontWeight = FontWeight.Bold, maxLines = 1) }
                             }
-                        }
+                            if (toast.dismissible) {
+                                IconButton(onClick = { ToastKitManager.dismiss(toast.id) }) {
+                                    MaterialIcon("close", "Dismiss", size = 20.dp, tint = toast.style.foreground)
+                                }
+                            }
                         }
                     }
                 }
