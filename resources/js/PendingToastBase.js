@@ -13,6 +13,10 @@ export class PendingToastBase {
     this.values[key] = value;
     return this;
   }
+  unset(key) {
+    delete this.values[key];
+    return this;
+  }
   message(value) {
     return this.set("message", nonEmpty(value, "message"));
   }
@@ -102,10 +106,30 @@ export class PendingToastBase {
     return this.set("dismissible", Boolean(enabled));
   }
   action(label, id) {
+    this.unset("actions");
     return this.set("action", {
       id: nonEmpty(id, "action ID"),
       label: nonEmpty(label, "action label"),
     });
+  }
+  actions(actions) {
+    if (!Array.isArray(actions) || actions.length < 1 || actions.length > 2)
+      throw new TypeError("toast actions must contain one or two actions");
+    const normalized = actions.map((action) => {
+      if (action === null || typeof action !== "object" || Array.isArray(action))
+        throw new TypeError("each toast action must specify a label and ID");
+      const normalized = {
+        id: nonEmpty(action.id, "action ID"),
+        label: nonEmpty(action.label, "action label"),
+      };
+      if (action.color !== undefined)
+        normalized.color = color(action.color, "action color");
+      return normalized;
+    });
+    if (new Set(normalized.map(({ id }) => id)).size !== normalized.length)
+      throw new TypeError("toast action IDs must be unique");
+    this.unset("action");
+    return this.set("actions", normalized);
   }
   data(value) {
     if (value === null || typeof value !== "object" || Array.isArray(value))

@@ -725,6 +725,20 @@ public function handleToastAction(
 
 Pressing an action emits `ToastActionPressed` with the attached data and dismisses the toast. Keep attached data small and JSON-serializable—IDs, types, and slugs are preferable to complete models or sensitive values. Calling `data()` during an update replaces the attached object; `data([])` clears it.
 
+Use `actions()` when a toast needs two choices. Every entry must explicitly provide both a non-empty `label` and a unique non-empty `id`:
+
+```php
+Toast::warning('Delete this draft?')
+    ->data(['draft_id' => 42])
+    ->actions([
+        ['label' => 'Cancel', 'id' => 'cancel', 'color' => '#D1D5DB'],
+        ['label' => 'Delete', 'id' => 'delete', 'color' => '#EF4444'],
+    ])
+    ->show();
+```
+
+`actions()` accepts one or two actions. The optional `color` on an individual action overrides `actionColor()` for that button; actions without a color continue using the shared action color or platform default. Pressing either action emits `ToastActionPressed` with that action's ID and then automatically dismisses the toast, matching `action()`. If `action()` and `actions()` are called on the same builder, the last method called wins. This makes it possible for an individual toast to override actions inherited from a preset without sending conflicting bridge values.
+
 The other events follow the same pattern:
 
 ```php
@@ -1100,6 +1114,7 @@ Native::test(ProfileScreen::class)
 | `swipeToDismiss(bool $enabled = true)` | Enable or disable swipe-to-dismiss. |
 | `dismissible(bool $enabled = true)` | Show a visible close control. |
 | `action(string $label, string $id)` | Add an action button with a label and ID. |
+| `actions(array $actions)` | Add one or two actions; every entry requires a unique `id` and a `label`, with an optional per-action `color`. |
 | `data(array $data)` | Attach JSON-serializable context delivered with body-press and action events. |
 | `background(string $color)` | Set the background color. |
 | `foreground(string $color)` | Set the text color. |

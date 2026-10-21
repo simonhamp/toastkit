@@ -42,6 +42,12 @@ class PendingToastUpdate
         return $this;
     }
 
+    protected function forget(string $key): static
+    {
+        unset($this->changes[$key]);
+        return $this;
+    }
+
     protected function putStyle(string $key, mixed $value): static
     {
         $this->changes['style'][$key] = $value;

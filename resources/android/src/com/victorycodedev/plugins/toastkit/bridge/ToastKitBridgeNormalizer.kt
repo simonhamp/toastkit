@@ -54,7 +54,8 @@ internal object ToastKitBridgeNormalizer {
         changes["loading"]?.let { next = next.copy(loading = boolean(it, "loading")) }
         changes["swipe_to_dismiss"]?.let { next = next.copy(swipeToDismiss = boolean(it, "swipe_to_dismiss")) }
         changes["dismissible"]?.let { next = next.copy(dismissible = boolean(it, "dismissible")) }
-        if (changes.containsKey("action")) next = next.copy(action = optionalValue(changes["action"])?.let(::action))
+        if (changes.containsKey("action")) next = next.copy(actions = optionalValue(changes["action"])?.let(::action)?.let(::listOf) ?: emptyList())
+        if (changes.containsKey("actions")) next = next.copy(actions = actions(changes["actions"] ?: emptyList<Any>()))
         if (changes.containsKey("data")) next = next.copy(data = data(changes["data"] ?: emptyMap<String, Any>()))
         changes["strategy"]?.let { next = next.copy(strategy = strategy(it)) }
         changes["max_visible"]?.let { next = next.copy(maxVisible = positiveInt(it, "max_visible")) }
@@ -94,7 +95,8 @@ internal object ToastKitBridgeNormalizer {
             loading = values["loading"]?.let { boolean(it, "loading") } ?: false,
             swipeToDismiss = values["swipe_to_dismiss"]?.let { boolean(it, "swipe_to_dismiss") } ?: true,
             dismissible = values["dismissible"]?.let { boolean(it, "dismissible") } ?: false,
-            action = optionalValue(values["action"])?.let(::action),
+            actions = if (values.containsKey("actions")) actions(values["actions"] ?: emptyList<Any>())
+                else optionalValue(values["action"])?.let(::action)?.let(::listOf) ?: emptyList(),
             data = values["data"]?.let(::data) ?: emptyMap(),
             style = style(values["style"] ?: emptyMap<String, Any>(), variantStyle(values["variant"] as? String ?: "neutral")),
             strategy = strategy(values["strategy"] ?: "queue"),
@@ -118,7 +120,23 @@ internal object ToastKitBridgeNormalizer {
 
     private fun action(value: Any): ToastKitAction {
         val map = stringMap(value) ?: throw ToastKitInputException("action must be an object")
-        return ToastKitAction(requiredString(map, "id"), requiredString(map, "label"))
+        return ToastKitAction(
+            requiredString(map, "id"),
+            requiredString(map, "label"),
+            map["color"]?.let { color(it, "action.color") },
+        )
+    }
+
+    private fun actions(value: Any): List<ToastKitAction> {
+        val values = when (value) {
+            is JSONArray -> (0 until value.length()).map(value::get)
+            is Collection<*> -> value.toList()
+            else -> throw ToastKitInputException("actions must be an array")
+        }
+        requireInput(values.size in 1..2, "actions must contain one or two actions")
+        val actions = values.map { action(it ?: throw ToastKitInputException("action must be an object")) }
+        requireInput(actions.map { it.id }.distinct().size == actions.size, "action IDs must be unique")
+        return actions
     }
 
     private fun data(value: Any): Map<String, Any> {

@@ -66,6 +66,50 @@ it('sets an action with a label and ID', function () {
     expect($this->calls[0][1]['action'])->toBe(['id' => 'retry', 'label' => 'Retry']);
 });
 
+it('sets one or two actions with required labels and IDs', function () {
+    $this->kit->make('Delete draft?')->actions([
+        ['label' => 'Cancel', 'id' => 'cancel'],
+        ['label' => 'Delete', 'id' => 'delete', 'color' => '#ef4444'],
+    ])->show();
+
+    expect($this->calls[0][1]['actions'])->toBe([
+        ['id' => 'cancel', 'label' => 'Cancel'],
+        ['id' => 'delete', 'label' => 'Delete', 'color' => '#EF4444'],
+    ]);
+});
+
+it('lets the last single or multiple action method win', function () {
+    $actions = [
+        ['label' => 'Cancel', 'id' => 'cancel'],
+        ['label' => 'Delete', 'id' => 'delete'],
+    ];
+
+    $single = $this->kit->make('One')->actions($actions)->action('Undo', 'undo')->payload();
+    $multiple = $this->kit->make('Two')->action('Undo', 'undo')->actions($actions)->payload();
+
+    expect($single)->toHaveKey('action', ['id' => 'undo', 'label' => 'Undo'])
+        ->not->toHaveKey('actions')
+        ->and($multiple)->toHaveKey('actions')
+        ->not->toHaveKey('action');
+});
+
+it('rejects invalid multiple actions', function () {
+    expect(fn () => $this->kit->make('x')->actions([]))->toThrow(InvalidToastConfigurationException::class)
+        ->and(fn () => $this->kit->make('x')->actions([
+            ['label' => 'One', 'id' => 'one'],
+            ['label' => 'Two', 'id' => 'two'],
+            ['label' => 'Three', 'id' => 'three'],
+        ]))->toThrow(InvalidToastConfigurationException::class)
+        ->and(fn () => $this->kit->make('x')->actions([['label' => 'Missing ID']]))->toThrow(InvalidToastConfigurationException::class)
+        ->and(fn () => $this->kit->make('x')->actions([
+            ['label' => 'One', 'id' => 'same'],
+            ['label' => 'Two', 'id' => 'same'],
+        ]))->toThrow(InvalidToastConfigurationException::class)
+        ->and(fn () => $this->kit->make('x')->actions([
+            ['label' => 'One', 'id' => 'one', 'color' => 'red'],
+        ]))->toThrow(InvalidToastConfigurationException::class);
+});
+
 // ── Presentation ───────────────────────────────────────────────────────────
 
 it('sets the position', function (string $position) {

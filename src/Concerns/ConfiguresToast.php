@@ -17,6 +17,7 @@ use Victorycodedev\ToastKit\Exceptions\InvalidToastConfigurationException;
 trait ConfiguresToast
 {
     abstract protected function put(string $key, mixed $value): static;
+    abstract protected function forget(string $key): static;
     abstract protected function putStyle(string $key, mixed $value): static;
     abstract protected function putTypography(string $group, array $values): static;
 
@@ -168,7 +169,45 @@ trait ConfiguresToast
     public function action(string $label, string $id): static
     {
         if (trim($label) === '' || trim($id) === '') throw new InvalidToastConfigurationException('Action label and ID must not be empty.');
+        $this->forget('actions');
         return $this->put('action', ['id' => $id, 'label' => $label]);
+    }
+
+    /**
+     * @param array<int, array{id: string, label: string, color?: string}> $actions
+     */
+    public function actions(array $actions): static
+    {
+        if (count($actions) < 1 || count($actions) > 2) {
+            throw new InvalidToastConfigurationException('Toast actions must contain one or two actions.');
+        }
+
+        $normalized = [];
+        $ids = [];
+        foreach ($actions as $action) {
+            if (! is_array($action) || ! isset($action['label'], $action['id']) || ! is_string($action['label']) || ! is_string($action['id'])) {
+                throw new InvalidToastConfigurationException('Each toast action must specify a string label and ID.');
+            }
+            if (trim($action['label']) === '' || trim($action['id']) === '') {
+                throw new InvalidToastConfigurationException('Action label and ID must not be empty.');
+            }
+            if (isset($ids[$action['id']])) {
+                throw new InvalidToastConfigurationException('Toast action IDs must be unique.');
+            }
+
+            $ids[$action['id']] = true;
+            $normalizedAction = ['id' => $action['id'], 'label' => $action['label']];
+            if (array_key_exists('color', $action)) {
+                if (! is_string($action['color'])) {
+                    throw new InvalidToastConfigurationException('Action color must be a hexadecimal color string.');
+                }
+                $normalizedAction['color'] = $this->color($action['color']);
+            }
+            $normalized[] = $normalizedAction;
+        }
+
+        $this->forget('action');
+        return $this->put('actions', $normalized);
     }
 
     public function data(array $data): static

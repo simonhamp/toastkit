@@ -173,6 +173,34 @@ test("swipe, dismissible and action are set", () => {
   assert.deepEqual(payload.action, { id: "retry", label: "Retry" });
 });
 
+test("actions accepts at most two labeled actions and the last API wins", () => {
+  const actions = [
+    { label: "Cancel", id: "cancel" },
+    { label: "Delete", id: "delete", color: "#ef4444" },
+  ];
+  assert.deepEqual(Toast.make("x").actions(actions).payload().actions, [
+    { id: "cancel", label: "Cancel" },
+    { id: "delete", label: "Delete", color: "#EF4444" },
+  ]);
+
+  const single = Toast.make("x").actions(actions).action("Undo", "undo").payload();
+  assert.deepEqual(single.action, { id: "undo", label: "Undo" });
+  assert.equal("actions" in single, false);
+
+  const multiple = Toast.make("x").action("Undo", "undo").actions(actions).payload();
+  assert.equal("action" in multiple, false);
+  assert.deepEqual(multiple.actions, [
+    { id: "cancel", label: "Cancel" },
+    { id: "delete", label: "Delete", color: "#EF4444" },
+  ]);
+
+  assert.throws(() => Toast.make("x").actions([]), /one or two/);
+  assert.throws(() => Toast.make("x").actions([...actions, { label: "Save", id: "save" }]), /one or two/);
+  assert.throws(() => Toast.make("x").actions([{ label: "Missing ID" }]), /action ID/);
+  assert.throws(() => Toast.make("x").actions([{ label: "One", id: "same" }, { label: "Two", id: "same" }]), /unique/);
+  assert.throws(() => Toast.make("x").actions([{ label: "One", id: "one", color: "red" }]), /hexadecimal/);
+});
+
 test("attached data is copied and remains sparse in updates", () => {
   const data = { conversation_id: 42, message: { id: 781 } };
   const pending = Toast.info("New message").data(data);

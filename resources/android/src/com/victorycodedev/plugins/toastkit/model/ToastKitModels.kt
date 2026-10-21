@@ -13,7 +13,7 @@ internal enum class ToastKitTextAlign { LEFT, CENTER, RIGHT }
 internal enum class ToastKitIconSize { SM, MD, LG }
 
 internal data class ToastKitIcon(val name: String?, val android: String?)
-internal data class ToastKitAction(val id: String, val label: String)
+internal data class ToastKitAction(val id: String, val label: String, val color: Color? = null)
 internal data class ToastKitTypography(
     val font: String? = null,
     val size: ToastKitTextSize? = null,
@@ -51,7 +51,7 @@ internal data class ToastKitConfiguration(
     val loading: Boolean,
     val swipeToDismiss: Boolean,
     val dismissible: Boolean,
-    val action: ToastKitAction?,
+    val actions: List<ToastKitAction>,
     val data: Map<String, Any>,
     val style: ToastKitStyle,
     val strategy: ToastKitStrategy,

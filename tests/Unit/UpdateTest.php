@@ -52,6 +52,20 @@ it('updates title and action together', function () {
     ]);
 });
 
+it('updates multiple actions sparsely', function () {
+    $this->kit->update('upload')->actions([
+        ['label' => 'Pause', 'id' => 'pause'],
+        ['label' => 'Cancel', 'id' => 'cancel'],
+    ])->show();
+
+    expect($this->calls[0][1]['changes'])->toBe([
+        'actions' => [
+            ['id' => 'pause', 'label' => 'Pause'],
+            ['id' => 'cancel', 'label' => 'Cancel'],
+        ],
+    ]);
+});
+
 it('sends sparse progress and loading updates', function () {
     $this->kit->update('upload')->progress(35.5)->show();
     $this->kit->update('upload')->loading(false)->show();

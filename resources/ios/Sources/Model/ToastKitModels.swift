@@ -18,6 +18,7 @@ struct ToastKitIconConfiguration {
 struct ToastKitActionConfiguration {
     let id: String
     let label: String
+    let color: Color?
 }
 
 struct ToastKitTypographyConfiguration {
@@ -58,7 +59,7 @@ struct ToastKitConfiguration: Identifiable {
     var loading: Bool
     var swipeToDismiss: Bool
     var dismissible: Bool
-    var action: ToastKitActionConfiguration?
+    var actions: [ToastKitActionConfiguration]
     var data: [String: Any]
     var style: ToastKitStyleConfiguration
     var strategy: ToastKitStrategy

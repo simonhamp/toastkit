@@ -57,7 +57,8 @@ enum ToastKitBridgeNormalizer {
         if let value = changes["loading"] { next.loading = try boolean(value, "loading") }
         if let value = changes["swipe_to_dismiss"] { next.swipeToDismiss = try boolean(value, "swipe_to_dismiss") }
         if let value = changes["dismissible"] { next.dismissible = try boolean(value, "dismissible") }
-        if changes.keys.contains("action") { next.action = try changes["action"].map(action) }
+        if changes.keys.contains("action") { next.actions = try changes["action"].map(action).map { [$0] } ?? [] }
+        if changes.keys.contains("actions") { next.actions = try actions(changes["actions"] ?? [Any]()) }
         if changes.keys.contains("data") { next.data = try data(changes["data"] ?? [String: Any]()) }
         if let value = changes["strategy"] { next.strategy = try enumValue(value, "strategy") }
         if let value = changes["max_visible"] { next.maxVisible = try positiveInt(value, "max_visible") }
@@ -95,7 +96,7 @@ enum ToastKitBridgeNormalizer {
             loading: try values["loading"].map { try boolean($0, "loading") } ?? false,
             swipeToDismiss: try values["swipe_to_dismiss"].map { try boolean($0, "swipe_to_dismiss") } ?? true,
             dismissible: try values["dismissible"].map { try boolean($0, "dismissible") } ?? false,
-            action: try values["action"].map(action),
+            actions: try values["actions"].map(actions) ?? values["action"].map(action).map { [$0] } ?? [],
             data: try values["data"].map(data) ?? [:],
             style: try style(values["style"] ?? [String: Any](), fallback: variantStyle(variantName)),
             strategy: try enumValue(values["strategy"] ?? "queue", "strategy"),
@@ -115,7 +116,22 @@ enum ToastKitBridgeNormalizer {
 
     private static func action(_ value: Any) throws -> ToastKitActionConfiguration {
         guard let map = value as? [String: Any] else { throw ToastKitInputError.invalid("action must be an object") }
-        return ToastKitActionConfiguration(id: try requiredString(map, "id"), label: try requiredString(map, "label"))
+        return ToastKitActionConfiguration(
+            id: try requiredString(map, "id"),
+            label: try requiredString(map, "label"),
+            color: try map["color"].map { try color($0, "action.color") }
+        )
+    }
+
+    private static func actions(_ value: Any) throws -> [ToastKitActionConfiguration] {
+        guard let values = value as? [Any], (1...2).contains(values.count) else {
+            throw ToastKitInputError.invalid("actions must contain one or two actions")
+        }
+        let actions = try values.map(action)
+        guard Set(actions.map(\.id)).count == actions.count else {
+            throw ToastKitInputError.invalid("action IDs must be unique")
+        }
+        return actions
     }
 
     private static func data(_ value: Any) throws -> [String: Any] {

@@ -195,10 +195,10 @@ private fun ToastKitCard(toast: ToastKitConfiguration) {
                     modifier = Modifier.fillMaxWidth(),
                 ) }
             }
-            toast.action?.let { action ->
+            toast.actions.forEach { action ->
                 TextButton(
                     onClick = { ToastKitManager.action(toast.id, action.id) },
-                    colors = ButtonDefaults.textButtonColors(contentColor = toast.style.actionColor),
+                    colors = ButtonDefaults.textButtonColors(contentColor = action.color ?: toast.style.actionColor),
                     contentPadding = PaddingValues(horizontal = 8.dp),
                 ) { Text(action.label, fontWeight = FontWeight.Bold) }
             }
@@ -340,10 +340,10 @@ private fun DynamicToastKitCard(
                                     maxLines = 2,
                                 ) }
                             }
-                            toast.action?.let { action ->
+                            toast.actions.forEach { action ->
                                 TextButton(
                                     onClick = { ToastKitManager.action(toast.id, action.id) },
-                                    colors = ButtonDefaults.textButtonColors(contentColor = toast.style.actionColor),
+                                    colors = ButtonDefaults.textButtonColors(contentColor = action.color ?: toast.style.actionColor),
                                     contentPadding = PaddingValues(horizontal = 8.dp),
                                 ) { Text(action.label, fontWeight = FontWeight.Bold, maxLines = 1) }
                             }
@@ -401,10 +401,10 @@ private fun NativeToastKitCard(toast: ToastKitConfiguration, displayedProgress: 
                         label = "native-toast-message-update",
                     ) { Text(it, style = androidx.compose.material3.MaterialTheme.typography.bodyMedium) }
                 }
-                toast.action?.let { action ->
+                toast.actions.forEach { action ->
                     TextButton(
                         onClick = { ToastKitManager.action(toast.id, action.id) },
-                        colors = ButtonDefaults.textButtonColors(contentColor = SnackbarDefaults.actionColor),
+                        colors = ButtonDefaults.textButtonColors(contentColor = action.color ?: SnackbarDefaults.actionColor),
                     ) { Text(action.label) }
                 }
                 if (toast.dismissible) {

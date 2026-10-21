@@ -192,13 +192,13 @@ private struct ToastKitView: View {
                         .foregroundStyle(toast.style.foreground)
                         .frame(minWidth: 120, maxWidth: 300, alignment: .leading)
 
-                        if let action = toast.action {
+                        ForEach(toast.actions, id: \.id) { action in
                             Button(action.label) {
                                 ToastKitManager.shared.pressAction(toastId: toast.id, actionId: action.id)
                             }
                             .buttonStyle(.plain)
                             .font(.subheadline.weight(.bold))
-                            .foregroundStyle(toast.style.actionColor)
+                            .foregroundStyle(action.color ?? toast.style.actionColor)
                         }
                         if toast.dismissible {
                             Button { ToastKitManager.shared.dismiss(toast.id) } label: {
@@ -267,9 +267,9 @@ private struct ToastKitView: View {
                 .animation(contentUpdateAnimation, value: toast.message)
         }
         .foregroundStyle(toast.style.foreground).frame(maxWidth: .infinity, alignment: .leading)
-            if let action = toast.action {
+            ForEach(toast.actions, id: \.id) { action in
                 Button(action.label) { ToastKitManager.shared.pressAction(toastId: toast.id, actionId: action.id) }
-                    .font(.subheadline.weight(.bold)).foregroundStyle(toast.style.actionColor)
+                    .font(.subheadline.weight(.bold)).foregroundStyle(action.color ?? toast.style.actionColor)
             }
             if toast.dismissible {
                 Button { ToastKitManager.shared.dismiss(toast.id) } label: {
@@ -318,10 +318,11 @@ private struct ToastKitView: View {
                     .animation(contentUpdateAnimation, value: toast.message)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            if let action = toast.action {
+            ForEach(toast.actions, id: \.id) { action in
                 Button(action.label) { ToastKitManager.shared.pressAction(toastId: toast.id, actionId: action.id) }
                     .buttonStyle(.borderless)
                     .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(action.color ?? toast.style.actionColor)
             }
             if toast.dismissible {
                 Button { ToastKitManager.shared.dismiss(toast.id) } label: {
