@@ -15,6 +15,7 @@ ToastKit renders toasts as native overlays — Jetpack Compose on Android, Swift
   - [Custom Toasts](#custom-toasts)
   - [Icons](#icons)
     - [Platform overrides](#platform-overrides)
+    - [Icon size](#icon-size)
   - [Typography](#typography)
     - [Font resolution](#font-resolution)
   - [Updating Toasts](#updating-toasts)
@@ -54,6 +55,7 @@ ToastKit renders toasts as native overlays — Jetpack Compose on Android, Swift
 - **Queue strategy** — FIFO, one toast at a time.
 - **Stack strategy** — up to `maxVisible` toasts on screen with FIFO overflow.
 - **Live updates** — change a visible or queued toast's message, variant, icon, style, or timer without creating a new toast.
+- **Polished updates** — title and message changes crossfade in place instead of snapping.
 - **Unique toasts** — suppress duplicate work by a stable semantic key across visible, queued, stacked, and persistent toasts.
 - **Idempotent dismissal** — dismiss by ID or dismiss everything.
 - **Events** — `ToastShown`, `ToastDismissed`, and `ToastActionPressed`.
@@ -142,7 +144,7 @@ Toast::make('Download complete')
     ->show();
 ```
 
-Supported options include `title()`, `icon()`, `position()`, `duration()`, `persistent()`, `animation()`, `direction()`, `progress()`, `loading()`, `swipeToDismiss()`, `dismissible()`, `action()`, and the styling methods `background()`, `foreground()`, `iconColor()`, `actionColor()`, `cornerRadius()`, `padding()`, and `shadow()`. See the [API Reference](#api-reference) for the full list.
+Supported options include `title()`, `icon()`, `iconSize()`, `position()`, `duration()`, `persistent()`, `animation()`, `direction()`, `progress()`, `loading()`, `swipeToDismiss()`, `dismissible()`, `action()`, and the styling methods `background()`, `foreground()`, `iconColor()`, `actionColor()`, `cornerRadius()`, `padding()`, and `shadow()`. See the [API Reference](#api-reference) for the full list.
 
 ## Icons
 
@@ -178,6 +180,18 @@ You can pass either override on its own:
 ```php
 Toast::make('Rated')->icon(ios: 'star.fill')->show();
 ```
+
+### Icon size
+
+Choose one of three icon sizes for the custom renderer:
+
+```php
+Toast::success('Uploaded')
+    ->iconSize('lg') // sm, md, or lg
+    ->show();
+```
+
+The size is `18`, `24`, or `32` points/dp respectively. Calling `iconSize()` is optional, so existing toasts retain their current platform default. Platform-native appearance ignores this option because the operating system controls native icon sizing.
 
 See NativePHP's [Icon name reference](https://nativephp.com/docs/mobile/4/edge-components/icon#icon-name-reference) for the names guaranteed to work consistently on both platforms.
 
@@ -1013,6 +1027,7 @@ Native::test(ProfileScreen::class)
 | `success()` / `error()` / `warning()` / `info()` / `neutral()` | Set the variant. |
 | `variant(ToastVariant\|string $variant)` | Set the variant by enum or string. |
 | `icon(?string $name = null, ?string $ios = null, ?string $android = null)` | Set an icon using string names, with optional SF Symbol (`ios:`) / Material Icon (`android:`) overrides. See [Icons](#icons). |
+| `iconSize(string $size)` | Set custom-renderer icon size to `sm`, `md`, or `lg`; native appearance ignores it. |
 | `position(ToastPosition\|string $position)` | `top`, `center`, or `bottom`. |
 | `native(bool $ios = true, bool $android = true)` | Use platform-native appearance selectively; custom rendering remains the default. |
 | `opacity(float $opacity = 0.8)` | Set whole-toast opacity from `0.0` to `1.0`; out-of-range values are clamped. |
@@ -1067,6 +1082,7 @@ Native::test(ProfileScreen::class)
 | `animation` | `scale` |
 | `direction` | `auto` |
 | `loading` | `false` |
+| `icon_size` | Platform default (omitted) |
 | `swipe_to_dismiss` | `true` |
 | `dismissible` | `false` |
 | `strategy` | `queue` |

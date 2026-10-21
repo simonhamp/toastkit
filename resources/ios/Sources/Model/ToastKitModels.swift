@@ -7,6 +7,7 @@ enum ToastKitStrategy: String { case queue, stack }
 enum ToastKitTextSize: String { case xs, sm, base, lg, xl }
 enum ToastKitTextWeight: String { case normal, medium, semibold, bold }
 enum ToastKitTextAlign: String { case left, center, right }
+enum ToastKitIconSize: String { case sm, md, lg }
 
 struct ToastKitIconConfiguration {
     let name: String?
@@ -46,6 +47,7 @@ struct ToastKitConfiguration: Identifiable {
     var title: String?
     var variant: String
     var icon: ToastKitIconConfiguration?
+    var iconSize: ToastKitIconSize?
     var position: ToastKitPosition
     var durationMilliseconds: Int?
     var animation: ToastKitAnimationKind

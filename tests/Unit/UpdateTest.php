@@ -37,6 +37,12 @@ it('updates icon and style independently', function () {
     ]);
 });
 
+it('updates icon size sparsely', function () {
+    $this->kit->update('upload')->iconSize('lg')->show();
+
+    expect($this->calls[0][1]['changes'])->toBe(['icon_size' => 'lg']);
+});
+
 it('updates title and action together', function () {
     $this->kit->update('upload')->title('Done')->action('Retry', 'retry')->show();
 

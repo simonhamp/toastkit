@@ -52,6 +52,9 @@ export class PendingToastBase {
       throw new TypeError("An icon name or platform override is required");
     return this.set("icon", icon);
   }
+  iconSize(value) {
+    return this.set("icon_size", oneOf(value, "icon size"));
+  }
   position(value) {
     return this.set("position", oneOf(value, "position"));
   }

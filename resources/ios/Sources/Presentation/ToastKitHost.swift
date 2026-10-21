@@ -110,6 +110,7 @@ private struct ToastKitView: View {
             }
         }
         .toastKitConditional(toast.swipeToDismiss) { $0.gesture(dragGesture) }
+        .accessibilityElement(children: .contain)
         .animation(reduceMotion ? .linear(duration: 0.1) : .spring(response: 0.3, dampingFraction: 0.78), value: drag)
     }
 
@@ -119,19 +120,26 @@ private struct ToastKitView: View {
                 ProgressView().tint(toast.style.iconColor).controlSize(.small)
             } else if let icon = toast.icon {
                 Image(systemName: icon.ios ?? getIconForName(icon.name ?? "circle"))
-                    .font(.system(size: 21, weight: .semibold)).foregroundStyle(toast.style.iconColor)
+                    .font(.system(size: toastKitIconSize(toast.iconSize, fallback: 21), weight: .semibold)).foregroundStyle(toast.style.iconColor)
                     .accessibilityHidden(true)
             }
         VStack(alignment: .leading, spacing: 2) {
-            if let title = toast.title {
-                Text(title)
-                    .font(toastKitFont(toast.titleText, defaultSize: 16, defaultWeight: .semibold))
-                    .applyToastKitTextAlignment(toast.titleText?.align)
+            Group {
+                if let title = toast.title {
+                    Text(title)
+                        .font(toastKitFont(toast.titleText, defaultSize: 16, defaultWeight: .semibold))
+                        .applyToastKitTextAlignment(toast.titleText?.align)
+                        .contentTransition(.opacity)
+                }
             }
+            .transition(.opacity)
+            .animation(contentUpdateAnimation, value: toast.title)
             Text(toast.message)
                 .font(toastKitFont(toast.text, defaultSize: toastKitFontSize(.base), defaultWeight: .medium))
                 .applyToastKitTextAlignment(toast.text?.align)
                 .fixedSize(horizontal: false, vertical: true)
+                .contentTransition(.opacity)
+                .animation(contentUpdateAnimation, value: toast.message)
         }
         .foregroundStyle(toast.style.foreground).frame(maxWidth: .infinity, alignment: .leading)
             if let action = toast.action {
@@ -140,7 +148,7 @@ private struct ToastKitView: View {
             }
             if toast.dismissible {
                 Button { ToastKitManager.shared.dismiss(toast.id) } label: {
-                    Image(systemName: "xmark").font(.system(size: 13, weight: .bold)).frame(width: 28, height: 28)
+                    Image(systemName: "xmark").font(.system(size: 13, weight: .bold)).frame(minWidth: 44, minHeight: 44)
                 }
                 .foregroundStyle(toast.style.foreground).accessibilityLabel("Dismiss")
             }
@@ -169,8 +177,20 @@ private struct ToastKitView: View {
                     .accessibilityHidden(true)
             }
             VStack(alignment: .leading, spacing: 2) {
-                if let title = toast.title { Text(title).font(.headline) }
-                Text(toast.message).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+                Group {
+                    if let title = toast.title {
+                        Text(title)
+                            .font(.headline)
+                            .contentTransition(.opacity)
+                    }
+                }
+                .transition(.opacity)
+                .animation(contentUpdateAnimation, value: toast.title)
+                Text(toast.message)
+                    .font(.subheadline)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .contentTransition(.opacity)
+                    .animation(contentUpdateAnimation, value: toast.message)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             if let action = toast.action {
@@ -180,7 +200,7 @@ private struct ToastKitView: View {
             }
             if toast.dismissible {
                 Button { ToastKitManager.shared.dismiss(toast.id) } label: {
-                    Image(systemName: "xmark").frame(width: 28, height: 28)
+                    Image(systemName: "xmark").frame(minWidth: 44, minHeight: 44)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Dismiss")
@@ -213,6 +233,10 @@ private struct ToastKitView: View {
                 if distance > 80 || abs(projected) > 180 { ToastKitManager.shared.dismiss(toast.id, reason: "swipe") }
                 else { drag = .zero }
             }
+    }
+
+    private var contentUpdateAnimation: Animation {
+        reduceMotion ? .linear(duration: 0.01) : .easeInOut(duration: 0.16)
     }
 }
 
@@ -280,6 +304,15 @@ private func toastKitFontSize(_ size: ToastKitTextSize) -> CGFloat {
     case .base: return 15
     case .lg: return 17
     case .xl: return 19
+    }
+}
+
+private func toastKitIconSize(_ size: ToastKitIconSize?, fallback: CGFloat) -> CGFloat {
+    switch size {
+    case .sm: return 18
+    case .md: return 24
+    case .lg: return 32
+    case nil: return fallback
     }
 }
 

@@ -7,7 +7,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -29,6 +28,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import android.view.accessibility.AccessibilityManager
 import android.content.Context
 import android.provider.Settings
@@ -126,11 +128,12 @@ private fun ToastKitCard(toast: ToastKitConfiguration) {
     LaunchedEffect(shouldBeVisible) { visibility.targetState = shouldBeVisible }
     AnimatedVisibility(visibleState = visibility, enter = enter, exit = exit) {
         val interaction = Modifier.padding(vertical = 4.dp).widthIn(max = 560.dp).fillMaxWidth()
+                .semantics { liveRegion = LiveRegionMode.Polite }
                 .graphicsLayer { translationX = displayedX; translationY = displayedY; alpha = (1f - (abs(displayedX) + abs(displayedY)) / 700f).coerceIn(.35f, 1f) }
                 .then(toast.opacity?.let { Modifier.alpha(it) } ?: Modifier)
                 .then(gesture)
         if (toast.nativeAndroid) {
-            NativeToastKitCard(toast, displayedProgress, interaction)
+            NativeToastKitCard(toast, displayedProgress, interaction, reduceMotion)
         } else {
         Column(
             modifier = interaction
@@ -142,38 +145,49 @@ private fun ToastKitCard(toast: ToastKitConfiguration) {
             if (toast.progress == null && toast.loading) {
                 CircularProgressIndicator(Modifier.size(22.dp), color = toast.style.iconColor, strokeWidth = 2.5.dp)
             } else toast.icon?.let {
-                MaterialIcon(it.android ?: it.name ?: "circle", "Toast icon", size = 24.dp, tint = toast.style.iconColor)
+                MaterialIcon(it.android ?: it.name ?: "circle", "Toast icon", size = toastIconSize(toast.iconSize, 24).dp, tint = toast.style.iconColor)
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                toast.title?.let { title ->
-                    Text(
-                        text = title,
+                AnimatedContent(
+                    targetState = toast.title,
+                    transitionSpec = { fadeIn(tween(if (reduceMotion) 1 else 140)) togetherWith fadeOut(tween(if (reduceMotion) 1 else 100)) },
+                    label = "toast-title-update",
+                ) { displayedTitle ->
+                    displayedTitle?.let { Text(
+                        text = displayedTitle,
                         color = toast.style.foreground,
                         fontSize = toast.titleText?.size?.let(::toastTextSize) ?: 16.sp,
                         fontWeight = toast.titleText?.weight?.let(::toastTextWeight) ?: FontWeight.SemiBold,
                         fontStyle = toast.titleText?.italic?.let { if (it) FontStyle.Italic else FontStyle.Normal },
                         fontFamily = toast.titleText?.font?.let(::toastFontFamily),
-                        textAlign = toast.titleText?.align?.let(::toastTextAlign) ?: TextAlign.Left,
+                        textAlign = toast.titleText?.align?.let(::toastTextAlign) ?: TextAlign.Start,
                         modifier = Modifier.fillMaxWidth(),
-                    )
+                    ) }
                 }
-                Text(
-                    text = toast.message,
+                AnimatedContent(
+                    targetState = toast.message,
+                    transitionSpec = { fadeIn(tween(if (reduceMotion) 1 else 140)) togetherWith fadeOut(tween(if (reduceMotion) 1 else 100)) },
+                    label = "toast-message-update",
+                ) { displayedMessage -> Text(
+                    text = displayedMessage,
                     color = toast.style.foreground,
                     fontSize = toast.text?.size?.let(::toastTextSize) ?: toastTextSize(ToastKitTextSize.BASE),
                     fontWeight = toast.text?.weight?.let(::toastTextWeight) ?: FontWeight.Medium,
                     fontStyle = toast.text?.italic?.let { if (it) FontStyle.Italic else FontStyle.Normal },
                     fontFamily = toast.text?.font?.let(::toastFontFamily),
-                    textAlign = toast.text?.align?.let(::toastTextAlign) ?: TextAlign.Left,
+                    textAlign = toast.text?.align?.let(::toastTextAlign) ?: TextAlign.Start,
                     modifier = Modifier.fillMaxWidth(),
-                )
+                ) }
             }
             toast.action?.let { action ->
-                Text(action.label, color = toast.style.actionColor, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.pointerInput(action.id) { detectTapGestures { ToastKitManager.action(toast.id, action.id) } })
+                TextButton(
+                    onClick = { ToastKitManager.action(toast.id, action.id) },
+                    colors = ButtonDefaults.textButtonColors(contentColor = toast.style.actionColor),
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                ) { Text(action.label, fontWeight = FontWeight.Bold) }
             }
             if (toast.dismissible) {
-                Box(Modifier.size(32.dp).pointerInput(toast.id) { detectTapGestures { ToastKitManager.dismiss(toast.id) } }, contentAlignment = Alignment.Center) {
+                IconButton(onClick = { ToastKitManager.dismiss(toast.id) }) {
                     MaterialIcon("close", "Dismiss", size = 20.dp, tint = toast.style.foreground)
                 }
             }
@@ -193,7 +207,7 @@ private fun ToastKitCard(toast: ToastKitConfiguration) {
 }
 
 @Composable
-private fun NativeToastKitCard(toast: ToastKitConfiguration, displayedProgress: Float, modifier: Modifier) {
+private fun NativeToastKitCard(toast: ToastKitConfiguration, displayedProgress: Float, modifier: Modifier, reduceMotion: Boolean) {
     Snackbar(modifier = modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -203,8 +217,18 @@ private fun NativeToastKitCard(toast: ToastKitConfiguration, displayedProgress: 
                     MaterialIcon(it.android ?: it.name ?: "circle", "Toast icon", size = 24.dp, tint = LocalContentColor.current)
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    toast.title?.let { Text(it, style = androidx.compose.material3.MaterialTheme.typography.labelLarge) }
-                    Text(toast.message, style = androidx.compose.material3.MaterialTheme.typography.bodyMedium)
+                    AnimatedContent(
+                        targetState = toast.title,
+                        transitionSpec = { fadeIn(tween(if (reduceMotion) 1 else 140)) togetherWith fadeOut(tween(if (reduceMotion) 1 else 100)) },
+                        label = "native-toast-title-update",
+                    ) { title ->
+                        title?.let { Text(it, style = androidx.compose.material3.MaterialTheme.typography.labelLarge) }
+                    }
+                    AnimatedContent(
+                        targetState = toast.message,
+                        transitionSpec = { fadeIn(tween(if (reduceMotion) 1 else 140)) togetherWith fadeOut(tween(if (reduceMotion) 1 else 100)) },
+                        label = "native-toast-message-update",
+                    ) { Text(it, style = androidx.compose.material3.MaterialTheme.typography.bodyMedium) }
                 }
                 toast.action?.let { action ->
                     TextButton(
@@ -274,6 +298,13 @@ private fun toastTextAlign(align: ToastKitTextAlign) = when (align) {
     ToastKitTextAlign.LEFT -> TextAlign.Left
     ToastKitTextAlign.CENTER -> TextAlign.Center
     ToastKitTextAlign.RIGHT -> TextAlign.Right
+}
+
+private fun toastIconSize(size: ToastKitIconSize?, fallback: Int): Int = when (size) {
+    ToastKitIconSize.SM -> 18
+    ToastKitIconSize.MD -> 24
+    ToastKitIconSize.LG -> 32
+    null -> fallback
 }
 
 private fun toastFontFamily(font: String): FontFamily? =

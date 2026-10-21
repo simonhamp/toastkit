@@ -49,6 +49,17 @@ it('rejects an icon with no name or overrides', function () {
     expect(fn () => $this->kit->make('x')->icon())->toThrow(InvalidToastConfigurationException::class);
 });
 
+it('sets a predefined icon size', function (string $size) {
+    $this->kit->make('Saved')->icon('check')->iconSize($size)->show();
+
+    expect($this->calls[0][1]['icon_size'])->toBe($size);
+})->with(['sm', 'md', 'lg']);
+
+it('rejects an invalid icon size', function () {
+    expect(fn () => $this->kit->make('x')->iconSize('xl'))
+        ->toThrow(InvalidToastConfigurationException::class);
+});
+
 it('sets an action with a label and ID', function () {
     $this->kit->make('Failed')->action('Retry', 'retry')->show();
 

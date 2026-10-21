@@ -39,6 +39,7 @@ internal object ToastKitBridgeNormalizer {
             next = next.copy(variant = name, style = variantStyle(name), icon = defaultIcon(name))
         }
         if (changes.containsKey("icon")) next = next.copy(icon = optionalValue(changes["icon"])?.let(::icon))
+        changes["icon_size"]?.let { next = next.copy(iconSize = iconSize(it)) }
         changes["position"]?.let { next = next.copy(position = position(it)) }
         changes["animation"]?.let { next = next.copy(animation = animation(it)) }
         changes["direction"]?.let { next = next.copy(direction = direction(it)) }
@@ -80,6 +81,7 @@ internal object ToastKitBridgeNormalizer {
             title = nullableString(values["title"], "title"),
             variant = variant(values["variant"] ?: "neutral"),
             icon = optionalValue(values["icon"])?.let(::icon),
+            iconSize = values["icon_size"]?.let(::iconSize),
             position = position(values["position"] ?: "bottom"),
             durationMs = if (persistent) null else positiveLong(values["duration"] ?: 3000, "duration"),
             animation = animation(values["animation"] ?: "scale"),
@@ -104,6 +106,10 @@ internal object ToastKitBridgeNormalizer {
         requireInput(name != null || android != null, "icon requires name or android")
         return ToastKitIcon(name, android)
     }
+
+    private fun iconSize(value: Any) = ToastKitIconSize.valueOf(
+        enumString(value, "icon size", setOf("sm", "md", "lg")).uppercase(),
+    )
 
     private fun action(value: Any): ToastKitAction {
         val map = stringMap(value) ?: throw ToastKitInputException("action must be an object")

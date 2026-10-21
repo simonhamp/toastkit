@@ -87,6 +87,15 @@ trait ConfiguresToast
         return $this->put('icon', $icon);
     }
 
+    public function iconSize(string $size): static
+    {
+        if (! in_array($size, ['sm', 'md', 'lg'], true)) {
+            throw new InvalidToastConfigurationException("Invalid toast icon size: {$size}.");
+        }
+
+        return $this->put('icon_size', $size);
+    }
+
     public function position(ToastPosition|string $position): static
     {
         return $this->put('position', $this->enumValue(ToastPosition::class, $position, 'position'));

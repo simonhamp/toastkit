@@ -39,6 +39,7 @@ it('retains content behavior and visual configuration in native mode', function 
         ->title('Success')
         ->success()
         ->icon(ios: 'checkmark.seal', android: 'verified')
+        ->iconSize('lg')
         ->action('View', 'view')
         ->position('top')
         ->persistent()
@@ -68,6 +69,7 @@ it('retains content behavior and visual configuration in native mode', function 
         'direction' => 'top',
     ])->and($payload['icon']['ios'])->toBe('checkmark.seal')
         ->and($payload['icon']['android'])->toBe('verified')
+        ->and($payload['icon_size'])->toBe('lg')
         ->and($payload['style']['background'])->toBe('#000000')
         ->and($payload['text'])->toBe(['size' => 'sm']);
 });

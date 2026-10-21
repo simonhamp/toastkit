@@ -9,6 +9,7 @@ internal enum class ToastKitStrategy { QUEUE, STACK }
 internal enum class ToastKitTextSize { XS, SM, BASE, LG, XL }
 internal enum class ToastKitTextWeight { NORMAL, MEDIUM, SEMIBOLD, BOLD }
 internal enum class ToastKitTextAlign { LEFT, CENTER, RIGHT }
+internal enum class ToastKitIconSize { SM, MD, LG }
 
 internal data class ToastKitIcon(val name: String?, val android: String?)
 internal data class ToastKitAction(val id: String, val label: String)
@@ -39,6 +40,7 @@ internal data class ToastKitConfiguration(
     val title: String?,
     val variant: String,
     val icon: ToastKitIcon?,
+    val iconSize: ToastKitIconSize?,
     val position: ToastKitPosition,
     val durationMs: Long?,
     val animation: ToastKitAnimation,

@@ -72,6 +72,14 @@ test("icon supports logical names and platform overrides", () => {
   );
 });
 
+test("icon size accepts only predefined sizes", () => {
+  assert.equal(Toast.make("x").iconSize("lg").payload().icon_size, "lg");
+  assert.deepEqual(Toast.update("one").iconSize("sm").payload().changes, {
+    icon_size: "sm",
+  });
+  assert.throws(() => Toast.make("x").iconSize("xl"), /icon size/);
+});
+
 test("position, duration, persistent and animation are set", () => {
   const payload = Toast.make("x")
     .position("top")
