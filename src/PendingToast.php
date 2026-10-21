@@ -81,6 +81,7 @@ class PendingToast
             'title' => null,
             'variant' => 'neutral',
             'position' => 'bottom',
+            'presentation' => 'standard',
             'native' => ['ios' => false, 'android' => false],
             'duration' => 3000,
             'persistent' => false,

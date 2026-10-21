@@ -44,6 +44,7 @@ enum ToastKitBridgeNormalizer {
         if let value = changes["icon"] { next.icon = try icon(value) }
         if let value = changes["icon_size"] { next.iconSize = try enumValue(value, "icon size") }
         if let value = changes["position"] { next.position = try enumValue(value, "position") }
+        if let value = changes["presentation"] { next.presentation = try enumValue(value, "presentation") }
         if let value = changes["animation"] { next.animation = try enumValue(value, "animation") }
         if let value = changes["direction"] { next.direction = try enumValue(value, "direction") }
         if let value = changes["native"] {
@@ -85,6 +86,7 @@ enum ToastKitBridgeNormalizer {
             icon: try values["icon"].map(icon),
             iconSize: try values["icon_size"].map { try enumValue($0, "icon size") },
             position: try enumValue(values["position"] ?? "bottom", "position"),
+            presentation: try enumValue(values["presentation"] ?? "standard", "presentation"),
             durationMilliseconds: persistent ? nil : try positiveInt(values["duration"] ?? 3000, "duration"),
             animation: try enumValue(values["animation"] ?? "scale", "animation"),
             direction: try enumValue(values["direction"] ?? "auto", "direction"),

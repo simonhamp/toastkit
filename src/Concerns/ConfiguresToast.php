@@ -6,6 +6,7 @@ use BackedEnum;
 use Victorycodedev\ToastKit\Enums\ToastAnimation;
 use Victorycodedev\ToastKit\Enums\ToastDirection;
 use Victorycodedev\ToastKit\Enums\ToastPosition;
+use Victorycodedev\ToastKit\Enums\ToastPresentation;
 use Victorycodedev\ToastKit\Enums\ToastStrategy;
 use Victorycodedev\ToastKit\Enums\ToastTextAlign;
 use Victorycodedev\ToastKit\Enums\ToastTextSize;
@@ -99,6 +100,16 @@ trait ConfiguresToast
     public function position(ToastPosition|string $position): static
     {
         return $this->put('position', $this->enumValue(ToastPosition::class, $position, 'position'));
+    }
+
+    public function presentation(ToastPresentation|string $presentation): static
+    {
+        return $this->put('presentation', $this->enumValue(ToastPresentation::class, $presentation, 'presentation'));
+    }
+
+    public function dynamic(): static
+    {
+        return $this->presentation(ToastPresentation::Dynamic);
     }
 
     public function native(bool $ios = true, bool $android = true): static

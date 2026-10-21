@@ -21,6 +21,7 @@ ToastKit renders toasts as native overlays — Jetpack Compose on Android, Swift
   - [Updating Toasts](#updating-toasts)
   - [Unique Toasts](#unique-toasts)
   - [Native Appearance](#native-appearance)
+  - [Dynamic Presentation](#dynamic-presentation)
   - [Opacity](#opacity)
   - [Progress \& Loading](#progress--loading)
   - [Animations \& Direction](#animations--direction)
@@ -144,7 +145,7 @@ Toast::make('Download complete')
     ->show();
 ```
 
-Supported options include `title()`, `icon()`, `iconSize()`, `position()`, `duration()`, `persistent()`, `animation()`, `direction()`, `progress()`, `loading()`, `swipeToDismiss()`, `dismissible()`, `action()`, and the styling methods `background()`, `foreground()`, `iconColor()`, `actionColor()`, `cornerRadius()`, `padding()`, and `shadow()`. See the [API Reference](#api-reference) for the full list.
+Supported options include `title()`, `icon()`, `iconSize()`, `position()`, `presentation()`, `duration()`, `persistent()`, `animation()`, `direction()`, `progress()`, `loading()`, `swipeToDismiss()`, `dismissible()`, `action()`, and the styling methods `background()`, `foreground()`, `iconColor()`, `actionColor()`, `cornerRadius()`, `padding()`, and `shadow()`. See the [API Reference](#api-reference) for the full list.
 
 ## Icons
 
@@ -400,6 +401,33 @@ Toast::update($id)
 ```
 
 On iOS 26 and later, ToastKit uses Apple's system Liquid Glass effect. Earlier supported iOS versions use SwiftUI's native regular material. Android uses the official Material 3 `Snackbar` component inside ToastKit's existing overlay, retaining the established lifecycle and event pipeline.
+
+## Dynamic Presentation
+
+Dynamic presentation flows from the top camera area with a short liquid-drop connector, starts as a compact foreground pill, and smoothly expands to reveal the toast content. It retracts toward the top when dismissed. The effect has a native SwiftUI design on iOS and a Material-style Compose design on Android:
+
+```php
+Toast::info('Syncing contacts...')
+    ->dynamic()
+    ->loading()
+    ->persistent()
+    ->show();
+```
+
+`dynamic()` is a shortcut for `presentation('dynamic')`. Use `presentation('standard')` to select the regular toast explicitly:
+
+```php
+Toast::success('Contacts synced')
+    ->presentation('dynamic')
+    ->progress(100)
+    ->action('View', 'view-contacts')
+    ->dismissible()
+    ->show();
+```
+
+Dynamic presentation works on iOS and Android and retains the normal toast lifecycle: entrance and exit animations, duration, persistence, queue/stack behavior, unique keys, live updates, progress, loading, one action, close controls, swipe dismissal, opacity, colors, typography, and icon sizing all remain available. It is automatically anchored at the top, so callers do not need to add `position('top')`.
+
+The dynamic renderer controls its placement, so `position()` and `direction()` are ignored.`native()` is also ignored while dynamic presentation is selected because dynamic presentation is already a platform-specific native design. The retained placement and native settings apply again if a sparse update changes the presentation back to `standard`.
 
 ## Opacity
 
@@ -1029,6 +1057,8 @@ Native::test(ProfileScreen::class)
 | `icon(?string $name = null, ?string $ios = null, ?string $android = null)` | Set an icon using string names, with optional SF Symbol (`ios:`) / Material Icon (`android:`) overrides. See [Icons](#icons). |
 | `iconSize(string $size)` | Set custom-renderer icon size to `sm`, `md`, or `lg`; native appearance ignores it. |
 | `position(ToastPosition\|string $position)` | `top`, `center`, or `bottom`. |
+| `presentation(ToastPresentation\|string $presentation)` | Select `standard` or `dynamic` presentation. |
+| `dynamic()` | Shortcut for `presentation('dynamic')`. |
 | `native(bool $ios = true, bool $android = true)` | Use platform-native appearance selectively; custom rendering remains the default. |
 | `opacity(float $opacity = 0.8)` | Set whole-toast opacity from `0.0` to `1.0`; out-of-range values are clamped. |
 | `duration(int $milliseconds)` | Set the visible duration (makes the toast timed). |
@@ -1063,6 +1093,7 @@ Native::test(ProfileScreen::class)
 | --- | --- |
 | `ToastVariant` | `success`, `error`, `warning`, `info`, `neutral` |
 | `ToastPosition` | `top`, `center`, `bottom` |
+| `ToastPresentation` | `standard`, `dynamic` |
 | `ToastAnimation` | `fade`, `slide`, `scale`, `spring`, `snap`, `pop`, `reveal`, `bounce` |
 | `ToastDirection` | `auto`, `left`, `right`, `top`, `bottom` |
 | `ToastStrategy` | `queue`, `stack` |
@@ -1077,6 +1108,7 @@ Native::test(ProfileScreen::class)
 | --- | --- |
 | `variant` | `neutral` |
 | `position` | `bottom` |
+| `presentation` | `standard` |
 | `duration` | `3000` ms |
 | `persistent` | `false` |
 | `animation` | `scale` |

@@ -93,6 +93,16 @@ test("position, duration, persistent and animation are set", () => {
   assert.equal(Toast.make("x").persistent().payload().duration, null);
 });
 
+test("presentation defaults to standard and supports dynamic updates", () => {
+  assert.equal(Toast.make("x").payload().presentation, "standard");
+  assert.equal(Toast.make("x").presentation("dynamic").payload().presentation, "dynamic");
+  assert.equal(Toast.make("x").dynamic().payload().presentation, "dynamic");
+  assert.deepEqual(Toast.update("one").dynamic().payload().changes, {
+    presentation: "dynamic",
+  });
+  assert.throws(() => Toast.make("x").presentation("floating"), /presentation/);
+});
+
 test("native appearance is custom by default and selectable per platform", () => {
   assert.deepEqual(Toast.success("Default").payload().native, { ios: false, android: false });
   assert.deepEqual(Toast.success("Both").native().payload().native, { ios: true, android: true });

@@ -1,6 +1,7 @@
 export const allowed = {
   variant: ["neutral", "success", "error", "warning", "info"],
   position: ["top", "center", "bottom"],
+  presentation: ["standard", "dynamic"],
   animation: ["fade", "slide", "scale", "spring", "snap", "pop", "reveal", "bounce"],
   direction: ["auto", "left", "right", "top", "bottom"],
   strategy: ["queue", "stack"],

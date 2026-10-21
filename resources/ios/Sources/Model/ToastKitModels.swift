@@ -1,6 +1,7 @@
 import SwiftUI
 
 enum ToastKitPosition: String { case top, center, bottom }
+enum ToastKitPresentation: String { case standard, dynamic }
 enum ToastKitAnimationKind: String { case fade, slide, scale, spring, snap, pop, reveal, bounce }
 enum ToastKitDirection: String { case auto, left, right, top, bottom }
 enum ToastKitStrategy: String { case queue, stack }
@@ -49,6 +50,7 @@ struct ToastKitConfiguration: Identifiable {
     var icon: ToastKitIconConfiguration?
     var iconSize: ToastKitIconSize?
     var position: ToastKitPosition
+    var presentation: ToastKitPresentation
     var durationMilliseconds: Int?
     var animation: ToastKitAnimationKind
     var direction: ToastKitDirection

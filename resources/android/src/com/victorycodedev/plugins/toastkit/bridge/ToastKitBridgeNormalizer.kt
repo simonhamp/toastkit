@@ -41,6 +41,7 @@ internal object ToastKitBridgeNormalizer {
         if (changes.containsKey("icon")) next = next.copy(icon = optionalValue(changes["icon"])?.let(::icon))
         changes["icon_size"]?.let { next = next.copy(iconSize = iconSize(it)) }
         changes["position"]?.let { next = next.copy(position = position(it)) }
+        changes["presentation"]?.let { next = next.copy(presentation = presentation(it)) }
         changes["animation"]?.let { next = next.copy(animation = animation(it)) }
         changes["direction"]?.let { next = next.copy(direction = direction(it)) }
         changes["native"]?.let {
@@ -83,6 +84,7 @@ internal object ToastKitBridgeNormalizer {
             icon = optionalValue(values["icon"])?.let(::icon),
             iconSize = values["icon_size"]?.let(::iconSize),
             position = position(values["position"] ?: "bottom"),
+            presentation = presentation(values["presentation"] ?: "standard"),
             durationMs = if (persistent) null else positiveLong(values["duration"] ?: 3000, "duration"),
             animation = animation(values["animation"] ?: "scale"),
             direction = direction(values["direction"] ?: "auto"),
@@ -195,6 +197,7 @@ internal object ToastKitBridgeNormalizer {
 
     private fun variant(value: Any): String = enumString(value, "variant", setOf("neutral", "success", "error", "warning", "info"))
     private fun position(value: Any) = ToastKitPosition.valueOf(enumString(value, "position", setOf("top", "center", "bottom")).uppercase())
+    private fun presentation(value: Any) = ToastKitPresentation.valueOf(enumString(value, "presentation", setOf("standard", "dynamic")).uppercase())
     private fun animation(value: Any) = ToastKitAnimation.valueOf(enumString(value, "animation", setOf("fade", "slide", "scale", "spring", "snap", "pop", "reveal", "bounce")).uppercase())
     private fun direction(value: Any) = ToastKitDirection.valueOf(enumString(value, "direction", setOf("auto", "left", "right", "top", "bottom")).uppercase())
     private fun strategy(value: Any) = ToastKitStrategy.valueOf(enumString(value, "strategy", setOf("queue", "stack")).uppercase())
